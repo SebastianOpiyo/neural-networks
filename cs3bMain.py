@@ -6,6 +6,7 @@
 
 # Imports
 from enum import Enum
+import numpy as np
 
 
 class DataMismatchError(Exception):
@@ -37,12 +38,12 @@ class NNData:
 
     @staticmethod
     def percentage_limiter(percentage: float):
-        """A method that accepts percentage as a float and returns 0 if its than 0
+        """A method that accepts percentage as a float and returns 0 if its less than 1
         otherwise 1. """
         return 0 if percentage <= 0 else 1
 
     def load_data(self, features: list, labels: list):
-        """Compares the length of the passed in lists, if they are ore no the same
+        """Compares the length of the passed in lists, if they are no the same
         is raises an DataMismatchError, and if features is None, it sets both self._labels
         and self._features to None and just return."""
         try:
@@ -50,9 +51,19 @@ class NNData:
                 raise DataMismatchError
         except DataMismatchError:
             pass
+            print("The length of the lists is a mismatch")
         if features is None:
             self._features, self._labels = None, None
             return
+        try:
+            if features is not None:
+                self._labels = np.array(labels, dtype=float)
+                self._features = np.array(features, dtype=float)
+            else:
+                self._labels, self._features = None, None
+                raise ValueError
+        except ValueError:
+            print("Construction has failed, Value Error.")
 
 
 def load_xor():

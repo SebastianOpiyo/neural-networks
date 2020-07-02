@@ -1,5 +1,6 @@
 import unittest
-from cs3bMain import NNData as nd
+from cs3bMain import NNData as Nnd
+from cs3bMain import DataMismatchError as DataME
 
 
 class TestNNData(unittest.TestCase):
@@ -16,7 +17,19 @@ class TestNNData(unittest.TestCase):
     """
 
     def setUp(self):
-        self.nndata = nd(train_factor=.9, labels=3, features=3)
+        self.nndata = Nnd(train_factor=.9, labels=None, features=None)
 
-    def test_NNData_raises_DataMismatchError(self):
-        with self.assertEquals()
+    # def test_lists_length_equality(self):
+    #     features = [2, 4, 6, 7]
+    #     labels = [2, 3, 5]
+    #     with self.assertRaises(DataME):
+    #         self.nndata.load_data(features=features, labels=labels)
+
+    def test_return_None_with_unequal_lists(self):
+        features = [2, 4, 6, 7]
+        labels = [2, 3, 5]
+        self.assertIsNone(self.nndata.load_data(features=features, labels=labels), msg="The Lists are not equal!")
+
+
+if __name__ == "__main__":
+    unittest.main()
