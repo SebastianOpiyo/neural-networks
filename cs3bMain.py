@@ -67,4 +67,10 @@ class NNData:
 
 
 def load_xor():
-    pass
+    features = [[0, 0], [1, 0], [0, 1], [1, 1]]
+    labels = [[0], [1], [1], [0]]
+    NNData(train_factor=1, features=features, labels=labels)
+
+
+if __name__ == "__main__":
+    load_xor()
