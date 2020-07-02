@@ -50,7 +50,6 @@ class NNData:
             if len(features) != len(labels):
                 raise DataMismatchError
         except DataMismatchError:
-            pass
             print("The length of the lists is a mismatch")
         if features is None:
             self._features, self._labels = None, None
@@ -74,3 +73,4 @@ def load_xor():
 
 if __name__ == "__main__":
     load_xor()
+
