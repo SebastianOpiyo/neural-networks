@@ -17,18 +17,26 @@ class TestNNData(unittest.TestCase):
     """
 
     def setUp(self):
-        self.nndata = Nnd(train_factor=.9, labels=None, features=None)
+        self._nndata = Nnd(train_factor=.9, labels=None, features=None)
+        self.DataMismatch = DataME
 
-    # def test_lists_length_equality(self):
-    #     features = [2, 4, 6, 7]
-    #     labels = [2, 3, 5]
-    #     with self.assertRaises(DataME):
-    #         self.nndata.load_data(features=features, labels=labels)
-
-    def test_return_None_with_unequal_lists(self):
+    def test_lists_length_equality(self):
         features = [2, 4, 6, 7]
         labels = [2, 3, 5]
-        self.assertIsNone(self.nndata.load_data(features=features, labels=labels), msg="The Lists are not equal!")
+        with self.assertRaises(self.DataMismatch):
+            self._nndata.load_data(features=features, labels=labels)
+        with self.assertRaises(ValueError):
+            self._nndata.load_data(features=features, labels=labels)
+
+    def test_return_None_with_invalid_data(self):
+        features, labels = [2, 4, 6, 7], [2, 3, 5]
+        self.assertIsNone(self._nndata.load_data(features=features, labels=labels), msg="The Lists are not equal!")
+        features, labels = [2, 4, 6, 7], [2, "foo", 12, "Dola", 3]
+        self.assertIsNone(self._nndata.load_data(features=features, labels=labels), msg="Invalid Data in the lists!")
+
+    def test_training_factor_negative_positive_check(self):
+        self.assertEqual(0, self._nndata.percentage_limiter(-.3))
+        self.assertEqual(1, self._nndata.percentage_limiter(10.0))
 
 
 if __name__ == "__main__":
