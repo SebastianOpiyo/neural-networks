@@ -8,6 +8,7 @@
 from enum import Enum
 import numpy as np
 import collections
+import random as rndm
 
 
 class DataMismatchError(Exception):
@@ -43,12 +44,23 @@ class NNData:
             self.load_data(features, labels)
         except (ValueError, DataMismatchError):
             pass
-        self.split_set()
+        self.split_set(train_factor)  # To check.
 
     def split_set(self, new_train_factor=None):
+        if not new_train_factor:
+            new_train_factor = self._train_factor
         if new_train_factor:
-            # Remember to use percentage_limiter to make sure the value stays within range
-            self._train_factor = new_train_factor
+            self._train_factor = self.percentage_limiter(new_train_factor)
+            num_samples_loaded = range(len(self._features))
+            test_sample = sorted(rndm.sample(num_samples_loaded,
+                                             new_train_factor * len(self._features)))
+            train_sample = list(set(num_samples_loaded) ^ set(test_sample))
+            self._test_indices = self._features[test_sample]
+            self._train_indices = self._features[train_sample]
+
+            print(self._test_indices)
+            print(self._train_indices)
+            return self._train_indices, self._test_indices
 
     def prime_data(self, target_set=None, order=None):
         """This method will load one or both deques to be used as indirect indices. """
@@ -56,6 +68,12 @@ class NNData:
 
     def get_one_item(self, target_set=None):
         """Return exactly one feature/label pair as a tuple"""
+        pass
+
+    def number_of_samples(self):
+        pass
+
+    def pool_is_empty(self, target_set=None):
         pass
 
     @staticmethod
@@ -89,9 +107,50 @@ def load_XOR():
     XOR_Y = [[0], [1], [1], [0]]
     data = NNData(1, XOR_X, XOR_Y)
 
+
 # Temporary Test.
+def unit_test():
+    errors = False
+    try:
+        # Create a valid small and large dataset to be used later
+        x = list(range(10))
+        y = x
+        our_data_0 = NNData(x, y)
+        print(our_data_0._features)
+        x = list(range(100))
+        y = x
+        our_big_data = NNData(x, y, .5)
+
+        # Try loading lists of different sizes
+        y = [1]
+
+    except:
+        print("There are errors that likely come from __init__ or a "
+              "method called by __init__")
+        errors = True
+
+    # Test split_set to make sure the correct number of samples are in
+    # each set, and that the indices do not overlap.
+    try:
+        our_data_0.split_set(.3)
+        assert len(our_data_0._train_indices) == 3
+        assert len(our_data_0._test_indices) == 7
+        assert (list(set(our_data_0._train_indices +
+                         our_data_0._test_indices))) == list(range(10))
+    except:
+        print("There are errors that likely come from split_set")
+        errors = True  # Summary
+    if errors:
+        print("You have one or more errors.  Please fix them before "
+              "submitting")
+    else:
+        print("No errors were identified by the unit test.")
+        print("You should still double check that your code meets spec.")
+        print("You should also check that PyCharm does not identify any "
+              "PEP-8 issues.")
 
 
 if __name__ == "__main__":
-    load_xor()
+    load_XOR()
+    unit_test()
 
