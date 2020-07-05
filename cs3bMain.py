@@ -47,6 +47,8 @@ class NNData:
             pass
 
     def split_set(self, new_train_factor=None):
+        """Splits the dataset, so that we have one sample for testing and another for
+        training based on the train_factor"""
         if new_train_factor:
             self._train_factor = self.percentage_limiter(new_train_factor)
             num_samples_loaded = range(len(self._features))
