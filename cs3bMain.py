@@ -28,7 +28,7 @@ class NNData:
         TRAIN = 0
         TEST = 1
 
-    def __init__(self, train_factor=.9, features=None, labels=None):
+    def __init__(self, features=None, labels=None, train_factor=.9):
         self._train_factor = NNData.percentage_limiter(train_factor)
         if features is None:
             features = []
@@ -42,24 +42,19 @@ class NNData:
         self._features = None
         try:
             self.load_data(features, labels)
+            self.split_set(train_factor)
         except (ValueError, DataMismatchError):
             pass
-        self.split_set(train_factor)  # To check.
 
     def split_set(self, new_train_factor=None):
-        if not new_train_factor:
-            new_train_factor = self._train_factor
         if new_train_factor:
             self._train_factor = self.percentage_limiter(new_train_factor)
             num_samples_loaded = range(len(self._features))
             test_sample = sorted(rndm.sample(num_samples_loaded,
-                                             new_train_factor * len(self._features)))
+                                             int(self._train_factor * len(self._features))))
             train_sample = list(set(num_samples_loaded) ^ set(test_sample))
             self._test_indices = self._features[test_sample]
             self._train_indices = self._features[train_sample]
-
-            print(self._test_indices)
-            print(self._train_indices)
             return self._train_indices, self._test_indices
 
     def prime_data(self, target_set=None, order=None):
@@ -105,7 +100,7 @@ class NNData:
 def load_XOR():
     XOR_X = [[0, 0], [1, 0], [0, 1], [1, 1]]
     XOR_Y = [[0], [1], [1], [0]]
-    data = NNData(1, XOR_X, XOR_Y)
+    data = NNData(XOR_X, XOR_Y, 1)
 
 
 # Temporary Test.
@@ -116,15 +111,27 @@ def unit_test():
         x = list(range(10))
         y = x
         our_data_0 = NNData(x, y)
+        print("Print features for our_data_0")
         print(our_data_0._features)
         x = list(range(100))
         y = x
         our_big_data = NNData(x, y, .5)
-
+        print()
+        print("Print features for our_big_data")
+        print(our_big_data._features)
+        print()
+        print("_train_indices and _test_indices for our_big_data with percentile=.5")
+        print(our_big_data._train_indices)
+        print(our_big_data._test_indices)
+        our_big_data.split_set(.3)
+        print()
+        print("_train_indices and _test_indices for our_big_data with percentile=.3")
+        print(our_big_data._train_indices)
+        print(our_big_data._test_indices)
         # Try loading lists of different sizes
         y = [1]
 
-    except:
+    except(ValueError, DataMismatchError):
         print("There are errors that likely come from __init__ or a "
               "method called by __init__")
         errors = True
@@ -132,12 +139,19 @@ def unit_test():
     # Test split_set to make sure the correct number of samples are in
     # each set, and that the indices do not overlap.
     try:
+        x = list(range(10))
+        y = x
+        our_data_0 = NNData(x, y)
         our_data_0.split_set(.3)
-        assert len(our_data_0._train_indices) == 3
-        assert len(our_data_0._test_indices) == 7
-        assert (list(set(our_data_0._train_indices +
-                         our_data_0._test_indices))) == list(range(10))
-    except:
+        print()
+        print("_train_indices and _test_indices for our_data_0 with percentile .3")
+        print(our_data_0._train_indices)
+        print(our_data_0._test_indices)
+        assert len(our_data_0._train_indices) == 7
+        assert len(our_data_0._test_indices) == 3
+        # assert (list(set(our_data_0._test_indices +
+        #                  our_data_0._train_indices))) == list(range(10))
+    except AssertionError:
         print("There are errors that likely come from split_set")
         errors = True  # Summary
     if errors:
@@ -151,6 +165,6 @@ def unit_test():
 
 
 if __name__ == "__main__":
-    load_XOR()
+    # load_XOR()
     unit_test()
 
