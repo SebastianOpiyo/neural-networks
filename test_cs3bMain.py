@@ -50,3 +50,66 @@ class TestNNData(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+# Temporary test for reference.
+"""
+def unit_test():
+    errors = False
+    try:
+        # Create a valid small and large dataset to be used later
+        x = list(range(10))
+        y = x
+        our_data_0 = NNData(x, y)
+        print("Print features for our_data_0")
+        print(our_data_0._features)
+        x = list(range(100))
+        y = x
+        our_big_data = NNData(x, y, .5)
+        print()
+        print("Print features for our_big_data")
+        print(our_big_data._features)
+        print()
+        print("_train_indices and _test_indices for our_big_data with percentile=.5")
+        print(our_big_data._train_indices)
+        print(our_big_data._test_indices)
+        our_big_data.split_set(.3)
+        print()
+        print("_train_indices and _test_indices for our_big_data with percentile=.3")
+        print(our_big_data._train_indices)
+        print(our_big_data._test_indices)
+        # Try loading lists of different sizes
+        y = [1]
+
+    except(ValueError, DataMismatchError):
+        print("There are errors that likely come from __init__ or a "
+              "method called by __init__")
+        errors = True
+
+    # Test split_set to make sure the correct number of samples are in
+    # each set, and that the indices do not overlap.
+    try:
+        x = list(range(10))
+        y = x
+        our_data_0 = NNData(x, y)
+        our_data_0.split_set(.3)
+        print()
+        print("_train_indices and _test_indices for our_data_0 with percentile .3")
+        print(our_data_0._train_indices)
+        print(our_data_0._test_indices)
+        assert len(our_data_0._train_indices) == 7
+        assert len(our_data_0._test_indices) == 3
+        # Broadcast issue...probably in need of reshape TODO: Still looking at broadcast, I haven't grasped the idea.
+        # assert (list(set(our_data_0._test_indices +
+        #                   our_data_0._train_indices))) == list(range(10))
+    except AssertionError:
+        print("There are errors that likely come from split_set")
+        errors = True  # Summary
+    if errors:
+        print("You have one or more errors.  Please fix them before "
+              "submitting")
+    else:
+        print("No errors were identified by the unit test.")
+        print("You should still double check that your code meets spec.")
+        print("You should also check that PyCharm does not identify any "
+              "PEP-8 issues.")
+"""

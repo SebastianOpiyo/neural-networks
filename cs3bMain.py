@@ -1,7 +1,7 @@
 #!/bin/python3
 # Author:
 # Date Created: June 29, 2020
-# Date Modified: July 1, 2020
+# Date Modified: July 5, 2020
 # Description: Neural Networks capstone project.
 
 # Imports
@@ -61,16 +61,38 @@ class NNData:
 
     def prime_data(self, target_set=None, order=None):
         """This method will load one or both deques to be used as indirect indices. """
+        # if target_set is NNData.Set.TRAIN we load self._train_pool
+        # if target_set is NNData.Set.TEST we load self._test_pool
+        # if target_set is None we load both
+        # load the pools by copying all data from self._train_indices/self._test_indices
+        # if order is NNData.Order.RANDOM, shuffle the pool(s) created
+        # if order is None or NNData.Order.SEQUENTIAL, leave the pool(s) in order
         pass
 
     def get_one_item(self, target_set=None):
         """Return exactly one feature/label pair as a tuple"""
+        # If target_set is NNData.Set.TRAIN or is None, then use self._train_pool to find pair
+        # If target_set is NNData.Set.TEST, use self._test_pool
+        # NOTE: deques are used as indirect indices into actual example data
+        # We don't return the value from deque but use value from them to return
+        # the correct value from two numpy arrays
+        # use "popleft()" so that the index is not reused
+        # Return None if there are no indices left in the chose target_set
         pass
 
     def number_of_samples(self):
+        """Returns the total number of testing examples (if target_set is NNData.Set.TEST)
+        OR total number of training examples (if the target_set is NNData.Set.TRAIN)
+        OR  both combined if the target_set is None"""
+        # return total number of testing examples if target_set is NNData.Set.Test
+        # OR return total number of training examples if target_set is NNData.Set.TRAIN
+        # Otherwise, return both combined if the target_set is None
         pass
 
     def pool_is_empty(self, target_set=None):
+        """Returns true if the target set queue(self._train_pool or
+        self._test_pool) is empty otherwise False"""
+        # If target_set is None, use the train pool.
         pass
 
     @staticmethod
@@ -106,56 +128,96 @@ def load_XOR():
 
 
 # Temporary Test.
-def unit_test():
+def main():
     errors = False
     try:
         # Create a valid small and large dataset to be used later
         x = list(range(10))
         y = x
         our_data_0 = NNData(x, y)
-        print("Print features for our_data_0")
         print(our_data_0._features)
         x = list(range(100))
         y = x
         our_big_data = NNData(x, y, .5)
-        print()
-        print("Print features for our_big_data")
-        print(our_big_data._features)
-        print()
-        print("_train_indices and _test_indices for our_big_data with percentile=.5")
-        print(our_big_data._train_indices)
-        print(our_big_data._test_indices)
-        our_big_data.split_set(.3)
-        print()
-        print("_train_indices and _test_indices for our_big_data with percentile=.3")
-        print(our_big_data._train_indices)
-        print(our_big_data._test_indices)
+
         # Try loading lists of different sizes
         y = [1]
+        try:
+            our_bad_data = NNData()
+            our_bad_data.load_data(x, y)
+            raise Exception
+        except DataMismatchError:
+            pass
+        except:
+            raise Exception
 
-    except(ValueError, DataMismatchError):
+        # Create a dataset that can be used to make sure the
+        # features and labels are not confused
+        x = [1, 2, 3, 4]
+        y = [.1, .2, .3, .4]
+        our_data_1 = NNData(x, y, .5)
+
+    except:
         print("There are errors that likely come from __init__ or a "
               "method called by __init__")
         errors = True
 
-    # Test split_set to make sure the correct number of samples are in
+    # Test split_set to make sure the correct number of examples are in
     # each set, and that the indices do not overlap.
     try:
-        x = list(range(10))
-        y = x
-        our_data_0 = NNData(x, y)
         our_data_0.split_set(.3)
-        print()
-        print("_train_indices and _test_indices for our_data_0 with percentile .3")
-        print(our_data_0._train_indices)
-        print(our_data_0._test_indices)
-        assert len(our_data_0._train_indices) == 7
-        assert len(our_data_0._test_indices) == 3
-        # assert (list(set(our_data_0._test_indices +
-        #                  our_data_0._train_indices))) == list(range(10))
-    except AssertionError:
+        assert len(our_data_0._train_indices) == 3
+        assert len(our_data_0._test_indices) == 7
+        assert (list(set(our_data_0._train_indices +
+                         our_data_0._test_indices))) == list(range(10))
+    except:
         print("There are errors that likely come from split_set")
-        errors = True  # Summary
+        errors = True
+
+    # Make sure prime_data sets up the deques correctly, whether
+    # sequential or random.
+    try:
+        our_data_0.prime_data(order=NNData.Order.SEQUENTIAL)
+        assert len(our_data_0._train_pool) == 3
+        assert len(our_data_0._test_pool) == 7
+        assert our_data_0._train_indices == list(our_data_0._train_pool)
+        assert our_data_0._test_indices == list(our_data_0._test_pool)
+        our_big_data.prime_data(order=NNData.Order.RANDOM)
+        assert our_big_data._train_indices != list(our_big_data._train_pool)
+        assert our_big_data._test_indices != list(our_big_data._test_pool)
+    except:
+        print("There are errors that likely come from prime_data")
+        errors = True
+
+    # Make sure get_one_item is returning the correct values, and
+    # that pool_is_empty functions correctly.
+    try:
+        our_data_1.prime_data(order=NNData.Order.SEQUENTIAL)
+        my_x_list = []
+        my_y_list = []
+        while not our_data_1.pool_is_empty():
+            example = our_data_1.get_one_item()
+            my_x_list.append(example[0])
+            my_y_list.append(example[1])
+        assert len(my_x_list) == 2
+        assert my_x_list != my_y_list
+        my_matched_x_list = [i * 10 for i in my_y_list]
+        assert my_matched_x_list == my_x_list
+        while not our_data_1.pool_is_empty(our_data_1.Set.TEST):
+            example = our_data_1.get_one_item(our_data_1.Set.TEST)
+            my_x_list.append(example[0])
+            my_y_list.append(example[1])
+        assert my_x_list != my_y_list
+        my_matched_x_list = [i * 10 for i in my_y_list]
+        assert my_matched_x_list == my_x_list
+        assert set(my_x_list) == set(x)
+        assert set(my_y_list) == set(y)
+    except:
+        print("There are errors that may come from prime_data, but could "
+              "be from another method")
+        errors = True
+
+    # Summary
     if errors:
         print("You have one or more errors.  Please fix them before "
               "submitting")
@@ -167,6 +229,6 @@ def unit_test():
 
 
 if __name__ == "__main__":
-    # load_XOR()
-    unit_test()
+    load_XOR()
+    main()
 
