@@ -67,7 +67,7 @@ class NNData:
             self._test_pool = self._test_indices[:]
         else:
             self._train_pool, self._test_pool = self._train_indices[:], self._test_indices[:]
-        # if order is None or NNData.Order.SEQUENTIAL, leave the pool(s) in order
+        # if order is None or NNData.Order.SEQUENTIAL, leave the pool(s) in order otherwise shuffle
         if order is NNData.Oder.RANDOM:
             rndm.shuffle(self._train_pool)
             rndm.shuffle(self._test_pool)
@@ -83,14 +83,13 @@ class NNData:
         # Return None if there are no indices left in the chose target_set
         pass
 
-    def number_of_samples(self):
+    def number_of_samples(self, target_set=None):
         """Returns the total number of testing examples (if target_set is NNData.Set.TEST)
         OR total number of training examples (if the target_set is NNData.Set.TRAIN)
         OR  both combined if the target_set is None"""
-        # return total number of testing examples if target_set is NNData.Set.Test
-        # OR return total number of training examples if target_set is NNData.Set.TRAIN
-        # Otherwise, return both combined if the target_set is None
-        pass
+        if target_set is None:
+            return len(self._train_pool) + len(self._test_pool)
+        return len(self._test_pool) or len(self._train_pool)
 
     def pool_is_empty(self, target_set=None):
         """Returns true if the target set queue(self._train_pool or
