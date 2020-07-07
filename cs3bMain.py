@@ -61,13 +61,16 @@ class NNData:
 
     def prime_data(self, target_set=None, order=None):
         """This method will load one or both deques to be used as indirect indices. """
-        # if target_set is NNData.Set.TRAIN we load self._train_pool
-        # if target_set is NNData.Set.TEST we load self._test_pool
-        # if target_set is None we load both
-        # load the pools by copying all data from self._train_indices/self._test_indices
-        # if order is NNData.Order.RANDOM, shuffle the pool(s) created
+        if target_set is NNData.Set.TRAIN:
+            self._train_pool = self._train_indices[:]
+        elif target_set is NNData.Set.TEST:
+            self._test_pool = self._test_indices[:]
+        else:
+            self._train_pool, self._test_pool = self._train_indices[:], self._test_indices[:]
         # if order is None or NNData.Order.SEQUENTIAL, leave the pool(s) in order
-        pass
+        if order is NNData.Oder.RANDOM:
+            rndm.shuffle(self._train_pool)
+            rndm.shuffle(self._test_pool)
 
     def get_one_item(self, target_set=None):
         """Return exactly one feature/label pair as a tuple"""
@@ -92,8 +95,9 @@ class NNData:
     def pool_is_empty(self, target_set=None):
         """Returns true if the target set queue(self._train_pool or
         self._test_pool) is empty otherwise False"""
-        # If target_set is None, use the train pool.
-        pass
+        if target_set is None:
+            target_set = self._train_pool
+        return True if not target_set else False
 
     @staticmethod
     def percentage_limiter(factor):
@@ -102,9 +106,9 @@ class NNData:
         return min(1, max(factor, 0))  # TODO:Elegant, proposed soln but how does it work?
 
     def load_data(self, features=None, labels=None):
-        """Compares the length of the passed in lists, if they are no the same
-        is raises an DataMismatchError, and if features is None, it sets both self._labels
-        and self._features to None and just return."""
+        """Compares the length of the passed in lists, if they are not the same
+        is raises a DataMismatchError, and if features is None, it sets both self._labels
+        and self._features to None and return."""
         if features is None or labels is None:
             self._features, self._labels = None, None
             return
