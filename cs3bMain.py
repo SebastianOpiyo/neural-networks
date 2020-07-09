@@ -1,7 +1,7 @@
 #!/bin/python3
 # Author:
 # Date Created: June 29, 2020
-# Date Modified: July 5, 2020
+# Date Modified: July 9, 2020
 # Description: Neural Networks capstone project.
 
 # Imports
@@ -20,7 +20,7 @@ class NNData:
     """A class that enables us efficiently manage our Neural Network training and
     testing of data."""
 
-    class Oder(Enum):
+    class Order(Enum):
         RANDOM = 0
         SEQUENTIAL = 1
 
@@ -67,21 +67,19 @@ class NNData:
             self._test_pool = self._test_indices[:]
         else:
             self._train_pool, self._test_pool = self._train_indices[:], self._test_indices[:]
-        # if order is None or NNData.Order.SEQUENTIAL, leave the pool(s) in order otherwise shuffle
-        if order is NNData.Oder.RANDOM:
+        if order is NNData.Order.RANDOM:
             rndm.shuffle(self._train_pool)
             rndm.shuffle(self._test_pool)
 
     def get_one_item(self, target_set=None):
         """Return exactly one feature/label pair as a tuple"""
-        # If target_set is NNData.Set.TRAIN or is None, then use self._train_pool to find pair
-        # If target_set is NNData.Set.TEST, use self._test_pool
-        # NOTE: deques are used as indirect indices into actual example data
-        # We don't return the value from deque but use value from them to return
-        # the correct value from two numpy arrays
-        # use "popleft()" so that the index is not reused
-        # Return None if there are no indices left in the chose target_set
-        pass
+        if target_set is NNData.Set.TRAIN or target_set is None:
+            index_pair = self._train_pool.popleft()
+            return self._features[index_pair], self._labels[index_pair]
+        elif target_set is NNData.Set.TEST:
+            index_pair = self._test_pool.popleft()
+            return self._features[index_pair], self._labels[index_pair]
+        return None
 
     def number_of_samples(self, target_set=None):
         """Returns the total number of testing examples (if target_set is NNData.Set.TEST)
@@ -102,7 +100,7 @@ class NNData:
     def percentage_limiter(factor):
         """A method that accepts percentage as a float and returns 0 if its less than 1
         otherwise 1. """
-        return min(1, max(factor, 0))  # TODO:Elegant, proposed soln but how does it work?
+        return min(1, max(factor, 0))
 
     def load_data(self, features=None, labels=None):
         """Compares the length of the passed in lists, if they are not the same
