@@ -68,18 +68,17 @@ class NNData:
         else:
             self._train_pool, self._test_pool = self._train_indices[:], self._test_indices[:]
         if order is NNData.Order.RANDOM:
-            rndm.shuffle(self._train_pool)
-            rndm.shuffle(self._test_pool)
+            self._train_pool, self._test_pool = rndm.shuffle(self._train_pool), rndm.shuffle(self._test_pool)
 
     def get_one_item(self, target_set=None):
         """Return exactly one feature/label pair as a tuple."""
         if target_set is NNData.Set.TRAIN or target_set is None:
             index_pair = self._train_pool.popleft()
-            print(self._features[index_pair], self._labels[index_pair])
+            # print(self._features[index_pair], self._labels[index_pair])
             return self._features[index_pair], self._labels[index_pair]
         elif target_set is NNData.Set.TEST:
             index_pair = self._test_pool.popleft()
-            print(self._features[index_pair], self._labels[index_pair])
+            # print(self._features[index_pair], self._labels[index_pair])
             return self._features[index_pair], self._labels[index_pair]
         return None
 
@@ -96,7 +95,7 @@ class NNData:
         self._test_pool) is empty otherwise False"""
         if target_set is None:
             target_set = self._train_pool
-        return True if not target_set else False
+            return False if target_set else True
 
     @staticmethod
     def percentage_limiter(factor):
@@ -145,8 +144,6 @@ def main():
         try:
             our_bad_data = NNData()
             our_bad_data.load_data(x, y)
-            print()
-            print(our_bad_data._features)
             raise Exception
         except DataMismatchError:
             pass
@@ -188,18 +185,10 @@ def main():
         our_data_0.prime_data(order=NNData.Order.SEQUENTIAL)
         assert len(our_data_0._train_pool) == 3
         assert len(our_data_0._test_pool) == 7
-        print(our_data_0._train_pool)
-        print(our_data_0._test_pool)
-        print(our_data_0._train_indices)
-        print(our_data_0._test_indices)
-        assert our_data_0._train_indices == list(our_data_0._train_pool)
-        assert our_data_0._test_indices == list(our_data_0._test_pool)
-        print(our_big_data._train_indices)
-        print(our_big_data._test_indices)
-        print()
-        print("Getting into big data")
-        assert our_big_data._train_indices != list(our_big_data._train_pool)
-        assert our_big_data._test_indices != list(our_big_data._test_pool)
+        assert our_data_0._train_indices.tolist() == list(our_data_0._train_pool)
+        assert our_data_0._test_indices.tolist() == list(our_data_0._test_pool)
+        assert our_big_data._train_indices.tolist() != list(our_big_data._train_pool)
+        assert our_big_data._test_indices.tolist() != list(our_big_data._test_pool)
     except ValueError:
         print("There are errors that likely come from prime_data")
         errors = True
@@ -210,6 +199,7 @@ def main():
         our_data_1.prime_data(order=NNData.Order.SEQUENTIAL)
         my_x_list = []
         my_y_list = []
+        print(our_data_1.pool_is_empty())
         while not our_data_1.pool_is_empty():
             example = our_data_1.get_one_item()
             print()
