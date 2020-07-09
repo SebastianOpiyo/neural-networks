@@ -52,9 +52,9 @@ class NNData:
         if new_train_factor:
             self._train_factor = self.percentage_limiter(new_train_factor)
             num_samples_loaded = range(len(self._features))
-            test_sample = sorted(rndm.sample(num_samples_loaded,
-                                             int(self._train_factor * len(self._features))))
-            train_sample = list(set(num_samples_loaded) ^ set(test_sample))
+            train_sample = sorted(rndm.sample(num_samples_loaded,
+                                              int(self._train_factor * len(self._features))))
+            test_sample = list(set(num_samples_loaded) ^ set(train_sample))
             self._test_indices = self._features[test_sample]
             self._train_indices = self._features[train_sample]
             return self._train_indices, self._test_indices
@@ -72,12 +72,14 @@ class NNData:
             rndm.shuffle(self._test_pool)
 
     def get_one_item(self, target_set=None):
-        """Return exactly one feature/label pair as a tuple"""
+        """Return exactly one feature/label pair as a tuple."""
         if target_set is NNData.Set.TRAIN or target_set is None:
             index_pair = self._train_pool.popleft()
+            print(self._features[index_pair], self._labels[index_pair])
             return self._features[index_pair], self._labels[index_pair]
         elif target_set is NNData.Set.TEST:
             index_pair = self._test_pool.popleft()
+            print(self._features[index_pair], self._labels[index_pair])
             return self._features[index_pair], self._labels[index_pair]
         return None
 
@@ -137,26 +139,17 @@ def main():
         y = x
         our_data_0 = NNData(x, y)
         print(our_data_0._features)
-        x = list(range(100))
-        y = x
-        our_big_data = NNData(x, y, .5)
 
         # Try loading lists of different sizes
         y = [1]
         try:
             our_bad_data = NNData()
             our_bad_data.load_data(x, y)
+            print()
+            print(our_bad_data._features)
             raise Exception
         except DataMismatchError:
             pass
-        except:
-            raise Exception
-
-        # Create a dataset that can be used to make sure the
-        # features and labels are not confused
-        x = [1, 2, 3, 4]
-        y = [.1, .2, .3, .4]
-        our_data_1 = NNData(x, y, .5)
 
     except:
         print("There are errors that likely come from __init__ or a "
@@ -165,12 +158,26 @@ def main():
 
     # Test split_set to make sure the correct number of examples are in
     # each set, and that the indices do not overlap.
+    x = list(range(10))
+    y = x
+    our_data_0 = NNData(x, y)
+
+    # Big Data
+    x = list(range(100))
+    y = x
+    our_big_data = NNData(x, y, .5)
+
+    # Create a dataset that can be used to make sure the
+    # features and labels are not confused
+    x = [1, 2, 3, 4]
+    y = [.1, .2, .3, .4]
+    our_data_1 = NNData(x, y, .5)
     try:
         our_data_0.split_set(.3)
         assert len(our_data_0._train_indices) == 3
         assert len(our_data_0._test_indices) == 7
-        assert (list(set(our_data_0._train_indices +
-                         our_data_0._test_indices))) == list(range(10))
+        assert (list(set(our_data_0._train_indices.tolist() +
+        our_data_0._test_indices.tolist()))) == list(range(10))
     except:
         print("There are errors that likely come from split_set")
         errors = True
@@ -181,12 +188,19 @@ def main():
         our_data_0.prime_data(order=NNData.Order.SEQUENTIAL)
         assert len(our_data_0._train_pool) == 3
         assert len(our_data_0._test_pool) == 7
+        print(our_data_0._train_pool)
+        print(our_data_0._test_pool)
+        print(our_data_0._train_indices)
+        print(our_data_0._test_indices)
         assert our_data_0._train_indices == list(our_data_0._train_pool)
         assert our_data_0._test_indices == list(our_data_0._test_pool)
-        our_big_data.prime_data(order=NNData.Order.RANDOM)
+        print(our_big_data._train_indices)
+        print(our_big_data._test_indices)
+        print()
+        print("Getting into big data")
         assert our_big_data._train_indices != list(our_big_data._train_pool)
         assert our_big_data._test_indices != list(our_big_data._test_pool)
-    except:
+    except ValueError:
         print("There are errors that likely come from prime_data")
         errors = True
 
@@ -198,6 +212,9 @@ def main():
         my_y_list = []
         while not our_data_1.pool_is_empty():
             example = our_data_1.get_one_item()
+            print()
+            print("Example of get_one_item")
+            print(example)
             my_x_list.append(example[0])
             my_y_list.append(example[1])
         assert len(my_x_list) == 2
@@ -230,6 +247,5 @@ def main():
 
 
 if __name__ == "__main__":
-    load_XOR()
+    # load_XOR()
     main()
-
