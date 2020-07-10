@@ -68,19 +68,17 @@ class NNData:
         else:
             self._train_pool, self._test_pool = self._train_indices[:], self._test_indices[:]
         if order is NNData.Order.RANDOM:
-            rndm.shuffle(self._train_pool)
-            rndm.shuffle(self._test_pool)
+            self._train_pool, self._test_pool = rndm.shuffle(self._train_pool), rndm.shuffle(self._test_pool)
+        self._train_pool, self._test_pool = self._train_pool, self._test_pool
 
     def get_one_item(self, target_set=None):
         """Return exactly one feature/label pair as a tuple."""
         if target_set is NNData.Set.TRAIN or target_set is None:
-            index_pair = self._train_pool.popleft()
-            print(self._features[index_pair], self._labels[index_pair])
-            return self._features[index_pair], self._labels[index_pair]
+            index_val = self._train_pool.popleft()
+            return self._features[index_val], self._labels[index_val]
         elif target_set is NNData.Set.TEST:
-            index_pair = self._test_pool.popleft()
-            print(self._features[index_pair], self._labels[index_pair])
-            return self._features[index_pair], self._labels[index_pair]
+            index_val = self._test_pool.popleft()
+            return self._features[index_val], self._labels[index_val]
         return None
 
     def number_of_samples(self, target_set=None):
@@ -89,7 +87,9 @@ class NNData:
         OR  both combined if the target_set is None"""
         if target_set is None:
             return len(self._train_pool) + len(self._test_pool)
-        return len(self._test_pool) or len(self._train_pool)
+        elif target_set is NNData.Set.TEST:
+            return len(self._test_pool)
+        return len(self._train_pool)
 
     def pool_is_empty(self, target_set=None):
         """Returns true if the target set queue(self._train_pool or
@@ -145,8 +145,6 @@ def main():
         try:
             our_bad_data = NNData()
             our_bad_data.load_data(x, y)
-            print()
-            print(our_bad_data._features)
             raise Exception
         except DataMismatchError:
             pass
@@ -188,18 +186,10 @@ def main():
         our_data_0.prime_data(order=NNData.Order.SEQUENTIAL)
         assert len(our_data_0._train_pool) == 3
         assert len(our_data_0._test_pool) == 7
-        print(our_data_0._train_pool)
-        print(our_data_0._test_pool)
-        print(our_data_0._train_indices)
-        print(our_data_0._test_indices)
-        assert our_data_0._train_indices == list(our_data_0._train_pool)
-        assert our_data_0._test_indices == list(our_data_0._test_pool)
-        print(our_big_data._train_indices)
-        print(our_big_data._test_indices)
-        print()
-        print("Getting into big data")
-        assert our_big_data._train_indices != list(our_big_data._train_pool)
-        assert our_big_data._test_indices != list(our_big_data._test_pool)
+        assert our_data_0._train_indices.tolist() == list(our_data_0._train_pool)
+        assert our_data_0._test_indices.tolist() == list(our_data_0._test_pool)
+        assert our_big_data._train_indices.tolist() != list(our_big_data._train_pool)
+        assert our_big_data._test_indices.tolist() != list(our_big_data._test_pool)
     except ValueError:
         print("There are errors that likely come from prime_data")
         errors = True
@@ -210,11 +200,9 @@ def main():
         our_data_1.prime_data(order=NNData.Order.SEQUENTIAL)
         my_x_list = []
         my_y_list = []
+        print(our_data_1.pool_is_empty())
         while not our_data_1.pool_is_empty():
             example = our_data_1.get_one_item()
-            print()
-            print("Example of get_one_item")
-            print(example)
             my_x_list.append(example[0])
             my_y_list.append(example[1])
         assert len(my_x_list) == 2
