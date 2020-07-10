@@ -69,17 +69,16 @@ class NNData:
             self._train_pool, self._test_pool = self._train_indices[:], self._test_indices[:]
         if order is NNData.Order.RANDOM:
             self._train_pool, self._test_pool = rndm.shuffle(self._train_pool), rndm.shuffle(self._test_pool)
+        self._train_pool, self._test_pool = self._train_pool, self._test_pool
 
     def get_one_item(self, target_set=None):
         """Return exactly one feature/label pair as a tuple."""
         if target_set is NNData.Set.TRAIN or target_set is None:
-            index_pair = self._train_pool.popleft()
-            # print(self._features[index_pair], self._labels[index_pair])
-            return self._features[index_pair], self._labels[index_pair]
+            index_val = self._train_pool.popleft()
+            return self._features[index_val], self._labels[index_val]
         elif target_set is NNData.Set.TEST:
-            index_pair = self._test_pool.popleft()
-            # print(self._features[index_pair], self._labels[index_pair])
-            return self._features[index_pair], self._labels[index_pair]
+            index_val = self._test_pool.popleft()
+            return self._features[index_val], self._labels[index_val]
         return None
 
     def number_of_samples(self, target_set=None):
@@ -88,14 +87,16 @@ class NNData:
         OR  both combined if the target_set is None"""
         if target_set is None:
             return len(self._train_pool) + len(self._test_pool)
-        return len(self._test_pool) or len(self._train_pool)
+        elif target_set is NNData.Set.TEST:
+            return len(self._test_pool)
+        return len(self._train_pool)
 
     def pool_is_empty(self, target_set=None):
         """Returns true if the target set queue(self._train_pool or
         self._test_pool) is empty otherwise False"""
         if target_set is None:
             target_set = self._train_pool
-            return False if target_set else True
+        return True if not target_set else False
 
     @staticmethod
     def percentage_limiter(factor):
@@ -202,9 +203,6 @@ def main():
         print(our_data_1.pool_is_empty())
         while not our_data_1.pool_is_empty():
             example = our_data_1.get_one_item()
-            print()
-            print("Example of get_one_item")
-            print(example)
             my_x_list.append(example[0])
             my_y_list.append(example[1])
         assert len(my_x_list) == 2
