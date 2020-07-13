@@ -8,6 +8,7 @@
 import collections
 import math
 from enum import Enum
+from abc import ABC, abstractmethod
 
 import numpy as np
 import random as rndm
@@ -97,7 +98,7 @@ class NNData:
             if order == NNData.Order.RANDOM:
                 rndm.shuffle(train_indices_temp)
             self._train_pool = collections.deque(train_indices_temp)
-            
+
     def get_one_item(self, target_set=None):
         """Return exactly one feature/label pair as a tuple."""
         try:
@@ -137,11 +138,11 @@ def load_XOR():
 
 class LayerType(Enum):
     INPUT = 0
-    HIDDEN = 1
-    OUTPUT = 2
+    OUTPUT = 1
+    HIDDEN = 2
 
 
-class MultiLinkNode:
+class MultiLinkNode(ABC):
     """This will be a base class that will be a starting point for
     FFBPNeurode class"""
 
@@ -151,10 +152,13 @@ class MultiLinkNode:
         DOWNSTREAM = 1
 
     def __init__(self):
+        # Used as binary encoding to keep track of neighboring nodes with information
         self._reporting_nodes = {MultiLinkNode.Side.UPSTREAM: 0,
                                  MultiLinkNode.Side.DOWNSTREAM: 0}
+        # Assembles the final result after all the nodes have reported
         self._reference_value = {MultiLinkNode.Side.UPSTREAM: 0,
                                  MultiLinkNode.Side.DOWNSTREAM: 0}
+        # Keeps track of the neighboring nodes.
         self._neighbor = {MultiLinkNode.Side.UPSTREAM: [],
                           MultiLinkNode.Side.DOWNSTREAM: []}
 
@@ -162,26 +166,27 @@ class MultiLinkNode:
         """Prints out a representation of the node in context.
         - the ID of the node and the ID's of the neighboring nodes
         upstream and downstream."""
-        pass
+        upstream_id = self._neighbor[MultiLinkNode.Side.UPSTREAM][0]  # -1
+        downstream_id = self._neighbor[MultiLinkNode.Side.DOWNSTREAM][0]
+        print(f'The node in context ID is: {0}, the Upstream Neighboring Node ID is: {upstream_id}'
+              f'the Downstream Neighboring Node ID is: {downstream_id}')
 
+    @abstractmethod
     def _process_new_neighbor(self, node, side):
         """An abstract method that takes a node and a Side enum as parameters"""
         pass
 
-    def reset_neighbors(self, nodes, side):
+    def reset_neighbors(self, nodes: list, side):
         """Accepts nodes as a list and side as a Side enum.
         It reset/set the nodes that link into this node either upstream
         or downstream"""
-        # Copy the nodes parameter into the appropriate entry of self._neighbors
-        # Call _process_new_neighbor() for each node
-        # Calculate and store the appropriate value in the correct element of
-        # self._reference_value
-        pass
+        self._neighbor[side] = nodes[:]
+        for node in self._neighbor[side]:
+            self._reference_value[side] = self._process_new_neighbor(node, side)
 
 
 class Neurode(MultiLinkNode):
-    # Be sure to call the parent class constructor
-    # def __init_subclass__(cls, **kwargs):
+
     def __init__(self, node_type, learning_rate=.05):
         super().__init__()
         self._value = 0
@@ -189,16 +194,41 @@ class Neurode(MultiLinkNode):
         self._learning_rate = learning_rate
         self._weights = {}
 
-    def _process_new_newighbor(self, node, side):
-        pass
+    def _process_new_neighbor(self, node, side):
+        """Called when any new neighbors are added."""
+        self._weights[side] = rndm.uniform(0, 1)
 
     def _check_in(self, node, side):
-        pass
+        """Called whenever a learns that a neighboring node has information available."""
+        node_index = self._neighbor[side].index(node)
+        self._reporting_nodes[side] = node_index
+        if self._reporting_nodes == self._reference_value:
+            self._reporting_nodes = 0
+            return True
+        return False
 
     def get_weight(self, node):
-        pass
+        try:
+            return self._weights[node]
+        except KeyError:
+            pass
 
-    # Add the properties right here
+    # Property methods.
+    @property
+    def node_value(self):
+        return self._value
+
+    @property
+    def node_type(self):
+        return self._node_type
+
+    @property
+    def learning_rate_val(self):
+        return self._learning_rate
+
+    @learning_rate_val.setter
+    def learning_rate_val(self, learning_rate):
+        self._learning_rate = learning_rate
 
 
 class FFNeurode(Neurode):
@@ -222,6 +252,7 @@ class FFNeurode(Neurode):
     def set_input(self, input_value):
         pass
 
+
 class BPNeurode(Neurode):
     def __init__(self):
         super().__init__()
@@ -231,6 +262,14 @@ class BPNeurode(Neurode):
         pass
 
     def _calculate_delta(self, expected_value):
+        pass
+
+
+class FFBPNeurode(FFNeurode, BPNeurode):
+
+    def __init__(self):
+        FFNeurode.__init__(self)
+        BPNeurode.__init__(self)
         pass
 
 # Temporary Test.
@@ -291,9 +330,9 @@ def check_point_one_test():
 
     # Check that learning rates were set correctly
 
-    if not inputs[0].learning_rate == .05:
+    if not inputs[0]._learning_rate == .05:
         print("Fail - default learning rate was not set")
-    if not outputs[0].learning_rate == .01:
+    if not outputs[0]._learning_rate == .01:
         print("Fail - specified learning rate was not set")
 
     # Check that weights appear random
