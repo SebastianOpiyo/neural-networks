@@ -182,7 +182,9 @@ class MultiLinkNode(ABC):
         or downstream"""
         self._neighbor[side] = nodes[:]
         for node in self._neighbor[side]:
-            self._reference_value[side] = self._process_new_neighbor(node, side)
+            self._process_new_neighbor(node, side)
+        self._reference_value[side] = 2 * (len(self._neighbor[side]) << 1) - 1
+        # print(self._reference_value)
 
 
 class Neurode(MultiLinkNode):
@@ -201,11 +203,13 @@ class Neurode(MultiLinkNode):
     def _check_in(self, node, side):
         """Called whenever a learns that a neighboring node has information available."""
         node_index = self._neighbor[side].index(node)
-        self._reporting_nodes[side] = node_index
-        if self._reporting_nodes == self._reference_value:
+        self._reporting_nodes[side] = (2*(node_index << 1)) - 1
+        # print(self._reporting_nodes)
+        if self._reporting_nodes[side] == self._reference_value[side]:
             self._reporting_nodes = 0
             return True
-        return False
+        else:
+            return False
 
     def get_weight(self, node):
         try:
@@ -244,13 +248,27 @@ class FFNeurode(Neurode):
         """Calculate the weighted sum of the upstream nodes' values.
         Pass the result through self._sigmoid() and store the
         returned value into self._value"""
-        pass
+        # We have to do a calculation right here to get the upstream weight value.
+        upstream_weight = 0
+        self._value = self._sigmoid(upstream_weight)
 
     def _fire_downstream(self):
-        pass
+        """Call data_ready_upstream on each node's downstream neighbors
+        using self.
+        -the neurode is simply passing a reference to itself as an argument to
+        another neurode."""
+        self.data_ready_upstream(self)
+
+    def data_ready_upstream(self, node):
+        """Upstream neurodes call this method when they have data ready."""
+        self._check_in(node)
+        # if self._check_in confirms that there is data call
+        self._calculate_values()
+        self._fire_downstream()
 
     def set_input(self, input_value):
-        pass
+        """Used by the client to directly set the value of an input layer neurode."""
+        self.data_ready_upstream(self)
 
 
 class BPNeurode(Neurode):
@@ -344,7 +362,47 @@ def check_point_one_test():
                 print("Fail - weights do not appear to be set up properly")
             weight_list.append(node.get_weight(t_node))
 
+# def check_point_two_test():
+#     inodes = []
+#     hnodes = []
+#     onodes = []
+#     for k in range(2):
+#         inodes.append(FFNeurode(LayerType.INPUT))
+#     for k in range(2):
+#         hnodes.append(FFNeurode(LayerType.HIDDEN))
+#     onodes.append(FFNeurode(LayerType.OUTPUT))
+#     for node in inodes:
+#         node.reset_neighbors(hnodes, MultiLinkNode.Side.DOWNSTREAM)
+#     for node in hnodes:
+#         node.reset_neighbors(inodes, MultiLinkNode.Side.UPSTREAM)
+#         node.reset_neighbors(onodes, MultiLinkNode.Side.DOWNSTREAM)
+#     for node in onodes:
+#         node.reset_neighbors(hnodes, MultiLinkNode.Side.UPSTREAM)
+#     try:
+#         inodes[1].set_input(1)
+#         assert onodes[0].value == 0
+#     except:
+#         print("Error: Neurodes may be firing before receiving all input")
+#     inodes[0].set_input(0)
+#
+#     # Since input node 0 has value of 0 and input node 1 has value of
+#     # one, the value of the hidden layers should be the sigmoid of the
+#     # weight out of input node 1.
+#
+#     value_0 = (1 / (1 + np.exp(-hnodes[0]._weights[inodes[1]])))
+#     value_1 = (1 / (1 + np.exp(-hnodes[1]._weights[inodes[1]])))
+#     inter = onodes[0]._weights[hnodes[0]] * value_0 + \
+#             onodes[0]._weights[hnodes[1]] * value_1
+#     final = (1 / (1 + np.exp(-inter)))
+#     try:
+#         print(final, onodes[0].value)
+#         assert final == onodes[0].value
+#         assert 0 < final < 1
+#     except:
+#         print("Error: Calculation of neurode value may be incorrect")
+
 
 if __name__ == "__main__":
     load_XOR()
     check_point_one_test()
+    # check_point_two_test()
