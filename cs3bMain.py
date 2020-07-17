@@ -163,14 +163,14 @@ class MultiLinkNode(ABC):
         return ret_str
 
     @abstractmethod
-    def _process_new_neighbor(self, node, side):
+    def _process_new_neighbor(self, node, side: Side):
         pass
 
-    def reset_neighbors(self, nodes: list, side):
+    def reset_neighbors(self, nodes: list, side: Side):
         """Accepts nodes as a list and side as a Side enum.
         It reset/set the nodes that link into this node either upstream
         or downstream"""
-        self._neighbors[side] = nodes[:]
+        self._neighbors[side] = nodes.copy()
         for node in nodes:
             self._process_new_neighbor(node, side)
         self._reference_value[side] = (1 << len(nodes)) - 1
@@ -190,10 +190,10 @@ class Neurode(MultiLinkNode):
         if side is MultiLinkNode.Side.UPSTREAM:
             self._weights[node] = rndm.random()
 
-    def _check_in(self, node, side):
+    def _check_in(self, node, side: MultiLinkNode.Side):
         """Called whenever a node learns that a neighboring node has information available."""
         node_index = self._neighbors[side].index(node)
-        self._reporting_nodes[side] = \
+        self._reporting_nodes[side] =\
             self._reporting_nodes[side] | 1 << node_index
         if self._reporting_nodes[side] == self._reference_value[side]:
             self._reporting_nodes = 0
@@ -224,7 +224,7 @@ class Neurode(MultiLinkNode):
 class FFNeurode(Neurode):
 
     def __init__(self, my_type):
-        super().__init__(node_type=Neurode.node_type)
+        super().__init__(node_type=MultiLinkNode.Side.UPSTREAM)
         self._my_type = my_type
 
     @staticmethod
@@ -243,14 +243,15 @@ class FFNeurode(Neurode):
     def _fire_downstream(self):
         """Call data_ready_upstream on each node's downstream neighbors
         using self.
-        -the neurode is simply passing a reference to itself as an argument to
-        another neurode."""
-        self.data_ready_upstream(self)
+        """
+        for _ in self._neighbors[MultiLinkNode.Side.DOWNSTREAM]:
+            self.data_ready_upstream(self)
 
     def data_ready_upstream(self, node):
         """Upstream neurodes call this method when they have data ready."""
         try:
-            if self._check_in(node, side=MultiLinkNode.Side.UPSTREAM):
+            check_in_value = self._check_in(node, self._node_type)
+            if check_in_value:
                 self._calculate_values()
                 self._fire_downstream()
         except:
@@ -258,8 +259,9 @@ class FFNeurode(Neurode):
 
     def set_input(self, input_value):
         """Used by the client to directly set the value of an input layer neurode."""
-        self.data_ready_upstream(self)
         self._value = input_value
+        for _ in self._neighbors[MultiLinkNode.Side.DOWNSTREAM]:
+            self.data_ready_upstream(self)
 
 
 class BPNeurode(Neurode):
