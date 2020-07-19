@@ -178,7 +178,7 @@ class MultiLinkNode(ABC):
 
 class Neurode(MultiLinkNode):
 
-    def __init__(self, node_type, learning_rate=.05):
+    def __init__(self, node_type: LayerType, learning_rate=.05):
         super().__init__()
         self._value = 0
         self._node_type = node_type
@@ -224,7 +224,7 @@ class Neurode(MultiLinkNode):
 class FFNeurode(Neurode):
 
     def __init__(self, my_type):
-        super().__init__(node_type=MultiLinkNode.Side.UPSTREAM)
+        super().__init__(LayerType.INPUT)  # =MultiLinkNode.Side.UPSTREAM
         self._my_type = my_type
 
     @staticmethod
@@ -237,7 +237,7 @@ class FFNeurode(Neurode):
         returned value into self._value"""
         self.upstream_weight = 0
         for node in self._neighbors[MultiLinkNode.Side.UPSTREAM]:
-            self.upstream_weight += self.get_weight(node)
+            self.upstream_weight += self.get_weight(node) * self._value(self)  # TODO: Verify the calc
         self._value = self._sigmoid(self.upstream_weight)
 
     def _fire_downstream(self):
@@ -249,13 +249,11 @@ class FFNeurode(Neurode):
 
     def data_ready_upstream(self, node):
         """Upstream neurodes call this method when they have data ready."""
-        try:
-            check_in_value = self._check_in(node, self._node_type)
-            if check_in_value:
-                self._calculate_values()
-                self._fire_downstream()
-        except:
-            pass
+        check_in_value = self._check_in(node, MultiLinkNode.Side.UPSTREAM)
+        if check_in_value:
+            self._calculate_values()
+            self._fire_downstream()
+
 
     def set_input(self, input_value):
         """Used by the client to directly set the value of an input layer neurode."""
@@ -265,24 +263,189 @@ class FFNeurode(Neurode):
 
 
 class BPNeurode(Neurode):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, my_type):
+        super().__init__(LayerType.INPUT)
+        self._my_type = my_type
+        self._delta = 0
 
     @staticmethod
     def _sigmoid_derivative(value):
         return value * (1.0 - value)
 
-    def _calculate_delta(self, expected_value):
-        pass
+    def _calculate_delta(self, expected_value=None):
+        self._delta = (expected_value - self.node_value) *\
+                      BPNeurode._sigmoid_derivative(self.node_value)
+
+    def data_ready_downstream(self, node):
+        check_in_value = self._check_in(node, MultiLinkNode.Side.DOWNSTREAM)
+        if check_in_value:
+            self._calculate_delta()
+            self._fire_upstream()
+            self._update_weights()
+
+
+    def set_expected(self, expected_value):
+        self._calculate_delta(expected_value)
+        for _ in self._neighbors[MultiLinkNode.Side.UPSTREAM]:
+            self.data_ready_downstream(self)
+
+    def adjust_weights(self, node, adjustment):
+        self._weights[node] = adjustment
+
+    def _update_weights(self):
+        for _ in self._neighbors[MultiLinkNode.Side.DOWNSTREAM]:
+            self.adjust_weights(self)
+
+    def _fire_upstream(self):
+        for _ in self._neighbors[MultiLinkNode.Side.UPSTREAM]:
+            self.data_ready_downstream(self)
 
 
 class FFBPNeurode(FFNeurode, BPNeurode):
 
-    def __init__(self):
-        FFNeurode.__init__(self)
-        BPNeurode.__init__(self)
+    def __init__(self, my_type):
+        FFNeurode.__init__(self, my_type)
+        BPNeurode.__init__(self, my_type)
         pass
 
+
+def main():
+    try:
+        test_neurode = BPNeurode(0)
+    except:
+        print("Error - Cannot instaniate a BPNeurode object")
+        return
+    print("Testing Sigmoid Derivative")
+    try:
+        assert BPNeurode._sigmoid_derivative(0) == 0
+        if test_neurode._sigmoid_derivative(.4) == .24:
+            print("Pass")
+        else:
+            print("_sigmoid_derivative is not returning the correct "
+                  "result")
+    except:
+        print("Error - Is _sigmoid_derivative named correctly, created "
+              "in BPNeurode and decorated as a static method?")
+    print("Testing Instance objects")
+    try:
+        test_neurode._learning_rate
+        test_neurode._delta
+        print("Pass")
+    except:
+        print("Error - Are all instance objects created in __init__()?")
+
+    inodes = []
+    hnodes = []
+    onodes = []
+    for k in range(2):
+        inodes.append(FFBPNeurode(LayerType.INPUT))
+        hnodes.append(FFBPNeurode(LayerType.HIDDEN))
+        onodes.append(FFBPNeurode(LayerType.OUTPUT))
+    for node in inodes:
+        node.reset_neighbors(hnodes, MultiLinkNode.Side.DOWNSTREAM)
+    for node in hnodes:
+        node.reset_neighbors(inodes, MultiLinkNode.Side.UPSTREAM)
+        node.reset_neighbors(onodes, MultiLinkNode.Side.DOWNSTREAM)
+    for node in onodes:
+        node.reset_neighbors(hnodes, MultiLinkNode.Side.UPSTREAM)
+    print("testing learning rate values")
+    for node in hnodes:
+        print(f"my learning rate is {node._learning_rate}")
+    print("Testing check-in")
+    try:
+        hnodes[0]._reporting_nodes[MultiLinkNode.Side.DOWNSTREAM] = 1
+        if hnodes[0]._check_in(onodes[1], MultiLinkNode.Side.DOWNSTREAM) and \
+                not hnodes[1]._check_in(onodes[1],
+                                        MultiLinkNode.Side.DOWNSTREAM):
+            print("Pass")
+        else:
+            print("Error - _check_in is not responding correctly")
+    except:
+        print("Error - _check_in is raising an error.  Is it named correctly? "
+              "Check your syntax")
+    print("Testing calculate_delta on output nodes")
+    try:
+        onodes[0]._value = .2
+        onodes[0]._calculate_delta(.5)
+        if .0479 < onodes[0]._delta < .0481:
+            print("Pass")
+        else:
+            print("Error - calculate delta is not returning the correct value."
+                  "Check the math.")
+            print("        Hint: do you have a separate process for hidden "
+                  "nodes vs output nodes?")
+    except:
+        print("Error - calculate_delta is raising an error.  Is it named "
+              "correctly?  Check your syntax")
+    print("Testing calculate_delta on hidden nodes")
+    try:
+        onodes[0]._delta = .2
+        onodes[1]._delta = .1
+        onodes[0]._weights[hnodes[0]] = .4
+        onodes[1]._weights[hnodes[0]] = .6
+        hnodes[0]._value = .3
+        hnodes[0]._calculate_delta()
+        if .02939 < hnodes[0]._delta < .02941:
+            print("Pass")
+        else:
+            print("Error - calculate delta is not returning the correct value.  "
+                  "Check the math.")
+            print("        Hint: do you have a separate process for hidden "
+                  "nodes vs output nodes?")
+    except:
+        print("Error - calculate_delta is raising an error.  Is it named correctly?  Check your syntax")
+    try:
+        print("Testing update_weights")
+        hnodes[0]._update_weights()
+        if onodes[0]._learning_rate == .05:
+            if .4 + .06 * onodes[0]._learning_rate - .001 < \
+                    onodes[0]._weights[hnodes[0]] < \
+                    .4 + .06 * onodes[0]._learning_rate + .001:
+                print("Pass")
+            else:
+                print("Error - weights not updated correctly.  "
+                      "If all other methods passed, check update_weights")
+        else:
+            print("Error - Learning rate should be .05, please verify")
+    except:
+        print("Error - update_weights is raising an error.  Is it named "
+              "correctly?  Check your syntax")
+    print("All that looks good.  Trying to train a trivial dataset "
+          "on our network")
+    inodes = []
+    hnodes = []
+    onodes = []
+    for k in range(2):
+        inodes.append(FFBPNeurode(LayerType.INPUT))
+        hnodes.append(FFBPNeurode(LayerType.HIDDEN))
+        onodes.append(FFBPNeurode(LayerType.OUTPUT))
+    for node in inodes:
+        node.reset_neighbors(hnodes, MultiLinkNode.Side.DOWNSTREAM)
+    for node in hnodes:
+        node.reset_neighbors(inodes, MultiLinkNode.Side.UPSTREAM)
+        node.reset_neighbors(onodes, MultiLinkNode.Side.DOWNSTREAM)
+    for node in onodes:
+        node.reset_neighbors(hnodes, MultiLinkNode.Side.UPSTREAM)
+    inodes[0].set_input(1)
+    inodes[1].set_input(0)
+    value1 = onodes[0]._value
+    value2 = onodes[1]._value
+    onodes[0].set_expected(0)
+    onodes[1].set_expected(1)
+    inodes[0].set_input(1)
+    inodes[1].set_input(0)
+    value1a = onodes[0]._value
+    value2a = onodes[1]._value
+    if (value1 - value1a > 0) and (value2a - value2 > 0):
+        print("Pass - Learning was done!")
+    else:
+        print("Fail - the network did not make progress.")
+        print("If you hit a wall, be sure to seek help in the discussion "
+              "forum, from the instructor and from the tutors")
+
+
+if __name__ == "__main__":
+    main()
 
 # Temporary Test.
 # def check_point_one_test():
@@ -357,47 +520,46 @@ class FFBPNeurode(FFNeurode, BPNeurode):
 #             weight_list.append(node.get_weight(t_node))
 
 
-def check_point_two_test():
-    inodes = []
-    hnodes = []
-    onodes = []
-    for k in range(2):
-        inodes.append(FFNeurode(LayerType.INPUT))
-    for k in range(2):
-        hnodes.append(FFNeurode(LayerType.HIDDEN))
-    onodes.append(FFNeurode(LayerType.OUTPUT))
-    for node in inodes:
-        node.reset_neighbors(hnodes, MultiLinkNode.Side.DOWNSTREAM)
-    for node in hnodes:
-        node.reset_neighbors(inodes, MultiLinkNode.Side.UPSTREAM)
-        node.reset_neighbors(onodes, MultiLinkNode.Side.DOWNSTREAM)
-    for node in onodes:
-        node.reset_neighbors(hnodes, MultiLinkNode.Side.UPSTREAM)
-    try:
-        inodes[1].set_input(1)
-        assert onodes[0]._value == 0
-    except:
-        print("Error: Neurodes may be firing before receiving all input")
-    inodes[0].set_input(0)
+# def check_point_two_test():
+#     inodes = []
+#     hnodes = []
+#     onodes = []
+#     for k in range(2):
+#         inodes.append(FFNeurode(LayerType.INPUT))
+#     for k in range(2):
+#         hnodes.append(FFNeurode(LayerType.HIDDEN))
+#     onodes.append(FFNeurode(LayerType.OUTPUT))
+#     for node in inodes:
+#         node.reset_neighbors(hnodes, MultiLinkNode.Side.DOWNSTREAM)
+#     for node in hnodes:
+#         node.reset_neighbors(inodes, MultiLinkNode.Side.UPSTREAM)
+#         node.reset_neighbors(onodes, MultiLinkNode.Side.DOWNSTREAM)
+#     for node in onodes:
+#         node.reset_neighbors(hnodes, MultiLinkNode.Side.UPSTREAM)
+#     try:
+#         inodes[1].set_input(1)
+#         assert onodes[0]._value == 0
+#     except:
+#         print("Error: Neurodes may be firing before receiving all input")
+#     inodes[0].set_input(0)
+#
+#     # Since input node 0 has value of 0 and input node 1 has value of
+#     # one, the value of the hidden layers should be the sigmoid of the
+#     # weight out of input node 1.
+#
+#     value_0 = (1 / (1 + np.exp(-hnodes[0]._weights[inodes[1]])))
+#     value_1 = (1 / (1 + np.exp(-hnodes[1]._weights[inodes[1]])))
+#     inter = onodes[0]._weights[hnodes[0]] * value_0 + \
+#             onodes[0]._weights[hnodes[1]] * value_1
+#     final = (1 / (1 + np.exp(-inter)))
+#     try:
+#         print(final, onodes[0]._value)
+#         assert final == onodes[0]._value
+#         assert 0 < final < 1
+#     except:
+#         print("Error: Calculation of neurode value may be incorrect")
 
-    # Since input node 0 has value of 0 and input node 1 has value of
-    # one, the value of the hidden layers should be the sigmoid of the
-    # weight out of input node 1.
-
-    value_0 = (1 / (1 + np.exp(-hnodes[0]._weights[inodes[1]])))
-    value_1 = (1 / (1 + np.exp(-hnodes[1]._weights[inodes[1]])))
-    inter = onodes[0]._weights[hnodes[0]] * value_0 + \
-            onodes[0]._weights[hnodes[1]] * value_1
-    final = (1 / (1 + np.exp(-inter)))
-    try:
-        print(final, onodes[0]._value)
-        assert final == onodes[0]._value
-        assert 0 < final < 1
-    except:
-        print("Error: Calculation of neurode value may be incorrect")
-
-
-if __name__ == "__main__":
-    load_XOR()
-    # check_point_one_test()
-    check_point_two_test()
+# if __name__ == "__main__":
+#     load_XOR()
+#     # check_point_one_test()
+#     check_point_two_test()
