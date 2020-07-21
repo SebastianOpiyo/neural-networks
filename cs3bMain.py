@@ -196,7 +196,7 @@ class Neurode(MultiLinkNode):
         self._reporting_nodes[side] =\
             self._reporting_nodes[side] | 1 << node_index
         if self._reporting_nodes[side] == self._reference_value[side]:
-            self._reporting_nodes = 0
+            self._reporting_nodes[side] = 0
             return True
         else:
             return False
@@ -213,19 +213,18 @@ class Neurode(MultiLinkNode):
         return self._node_type
 
     @property
-    def learning_rate_val(self):
+    def learning_rate(self):
         return self._learning_rate
 
-    @learning_rate_val.setter
-    def learning_rate_val(self, learning_rate: float):
-        self._learning_rate = learning_rate
+    @learning_rate.setter
+    def learning_rate(self, learning_rate_val: float):
+        self._learning_rate = learning_rate_val
 
 
 class FFNeurode(Neurode):
 
     def __init__(self, my_type):
-        super().__init__(LayerType.INPUT)  # =MultiLinkNode.Side.UPSTREAM
-        self._my_type = my_type
+        super().__init__(my_type)
 
     @staticmethod
     def _sigmoid(value):
@@ -235,37 +234,34 @@ class FFNeurode(Neurode):
         """Calculate the weighted sum of the upstream nodes' values.
         Pass the result through self._sigmoid() and store the
         returned value into self._value"""
-        self.upstream_weight = 0
-        for node in self._neighbors[MultiLinkNode.Side.UPSTREAM]:
-            self.upstream_weight += self.get_weight(node) * self._value(self)  # TODO: Verify the calc
-        self._value = self._sigmoid(self.upstream_weight)
+        upstream_weight = 0
+        for node in self._neighbors[Neurode.Side.UPSTREAM]:
+            upstream_weight += self.get_weight(node) * self.node_value
+        self._value = self._sigmoid(upstream_weight)
 
     def _fire_downstream(self):
         """Call data_ready_upstream on each node's downstream neighbors
         using self.
         """
-        for _ in self._neighbors[MultiLinkNode.Side.DOWNSTREAM]:
-            self.data_ready_upstream(self)
+        for node in self._neighbors[Neurode.Side.DOWNSTREAM]:
+            node.data_ready_upstream(self)
 
     def data_ready_upstream(self, node):
         """Upstream neurodes call this method when they have data ready."""
-        check_in_value = self._check_in(node, MultiLinkNode.Side.UPSTREAM)
-        if check_in_value:
+        if self._check_in(node, Neurode.Side.UPSTREAM):
             self._calculate_values()
             self._fire_downstream()
-
 
     def set_input(self, input_value):
         """Used by the client to directly set the value of an input layer neurode."""
         self._value = input_value
-        for _ in self._neighbors[MultiLinkNode.Side.DOWNSTREAM]:
-            self.data_ready_upstream(self)
+        for node in self._neighbors[Neurode.Side.DOWNSTREAM]:
+            node.data_ready_upstream(self)
 
 
 class BPNeurode(Neurode):
     def __init__(self, my_type):
-        super().__init__(LayerType.INPUT)
-        self._my_type = my_type
+        super().__init__(my_type)
         self._delta = 0
 
     @staticmethod
@@ -273,32 +269,49 @@ class BPNeurode(Neurode):
         return value * (1.0 - value)
 
     def _calculate_delta(self, expected_value=None):
-        self._delta = (expected_value - self.node_value) *\
-                      BPNeurode._sigmoid_derivative(self.node_value)
+        if self.node_type is LayerType.HIDDEN:
+            weighted_value = 0
+            for node in self._neighbors[Neurode.Side.DOWNSTREAM]:
+                # Delta result for hidden nodes
+                weighted_value += node.get_weight(self) * node.delta
+                self._delta = weighted_value * BPNeurode._sigmoid_derivative(self._value)
+        else:
+            # Delta result for output nodes
+            if expected_value is None:
+                expected_value = 0
+            self._delta = (expected_value - self.node_value) *\
+                          BPNeurode._sigmoid_derivative(self.node_value)
 
     def data_ready_downstream(self, node):
-        check_in_value = self._check_in(node, MultiLinkNode.Side.DOWNSTREAM)
-        if check_in_value:
+        if self._check_in(node, Neurode.Side.DOWNSTREAM):
             self._calculate_delta()
             self._fire_upstream()
             self._update_weights()
 
-
     def set_expected(self, expected_value):
         self._calculate_delta(expected_value)
-        for _ in self._neighbors[MultiLinkNode.Side.UPSTREAM]:
-            self.data_ready_downstream(self)
+        for node in self._neighbors[Neurode.Side.UPSTREAM]:
+            node.data_ready_downstream(self)
 
     def adjust_weights(self, node, adjustment):
         self._weights[node] = adjustment
 
     def _update_weights(self):
-        for _ in self._neighbors[MultiLinkNode.Side.DOWNSTREAM]:
-            self.adjust_weights(self)
+        for node in self._neighbors[Neurode.Side.DOWNSTREAM]:
+            adjustment = node.get_weight(self) + (self._value * node.delta * node.learning_rate)
+            node.adjust_weights(self, adjustment)
 
     def _fire_upstream(self):
-        for _ in self._neighbors[MultiLinkNode.Side.UPSTREAM]:
-            self.data_ready_downstream(self)
+        for node in self._neighbors[Neurode.Side.UPSTREAM]:
+            node.data_ready_downstream(self)
+
+    @property
+    def delta(self):
+        return self._delta
+
+    @delta.setter
+    def delta(self, new_value):
+        self._delta = new_value
 
 
 class FFBPNeurode(FFNeurode, BPNeurode):
@@ -328,8 +341,8 @@ def main():
               "in BPNeurode and decorated as a static method?")
     print("Testing Instance objects")
     try:
-        test_neurode._learning_rate
-        test_neurode._delta
+        test_neurode.learning_rate
+        test_neurode.delta
         print("Pass")
     except:
         print("Error - Are all instance objects created in __init__()?")
@@ -350,7 +363,7 @@ def main():
         node.reset_neighbors(hnodes, MultiLinkNode.Side.UPSTREAM)
     print("testing learning rate values")
     for node in hnodes:
-        print(f"my learning rate is {node._learning_rate}")
+        print(f"my learning rate is {node.learning_rate}")
     print("Testing check-in")
     try:
         hnodes[0]._reporting_nodes[MultiLinkNode.Side.DOWNSTREAM] = 1
@@ -374,9 +387,10 @@ def main():
                   "Check the math.")
             print("        Hint: do you have a separate process for hidden "
                   "nodes vs output nodes?")
-    except:
+    except Exception as ex:
         print("Error - calculate_delta is raising an error.  Is it named "
               "correctly?  Check your syntax")
+        print(repr(ex))
     print("Testing calculate_delta on hidden nodes")
     try:
         onodes[0]._delta = .2
@@ -392,8 +406,9 @@ def main():
                   "Check the math.")
             print("        Hint: do you have a separate process for hidden "
                   "nodes vs output nodes?")
-    except:
+    except Exception as ex:
         print("Error - calculate_delta is raising an error.  Is it named correctly?  Check your syntax")
+        print(repr(ex))
     try:
         print("Testing update_weights")
         hnodes[0]._update_weights()
@@ -407,9 +422,10 @@ def main():
                       "If all other methods passed, check update_weights")
         else:
             print("Error - Learning rate should be .05, please verify")
-    except:
+    except Exception as ex:
         print("Error - update_weights is raising an error.  Is it named "
               "correctly?  Check your syntax")
+        print(repr(ex))
     print("All that looks good.  Trying to train a trivial dataset "
           "on our network")
     inodes = []
