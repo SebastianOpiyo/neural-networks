@@ -236,7 +236,7 @@ class FFNeurode(Neurode):
         returned value into self._value"""
         input_sum = 0
         for node, weight in self._weights.items():
-            input_sum += node.value * weight
+            input_sum += node.node_value * weight
         self._value = self._sigmoid(input_sum)
 
     def _fire_downstream(self):
@@ -269,40 +269,35 @@ class BPNeurode(Neurode):
         return value * (1.0 - value)
 
     def _calculate_delta(self, expected_value=None):
-        if self.node_type is LayerType.HIDDEN:
-            weighted_value = 0
-            for node in self._neighbors[Neurode.Side.DOWNSTREAM]:
-                # Delta result for hidden nodes
-                weighted_value += node.get_weight(self) * node.delta
-                self._delta = weighted_value * BPNeurode._sigmoid_derivative(self._value)
+        if self.node_type == LayerType.OUTPUT:
+            error = expected_value - self.node_value
+            self._delta = error * self._sigmoid_derivative(self.node_value)
         else:
-            # Delta result for output nodes
-            if expected_value is None:
-                expected_value = 0
-            self._delta = (expected_value - self.node_value) * \
-                          BPNeurode._sigmoid_derivative(self.node_value)
+            self._delta = 0
+            for neurode in self._neighbors[MultiLinkNode.Side.DOWNSTREAM]:
+                self._delta += neurode.get_weight(self) * neurode.delta
+            self._delta *= self._sigmoid_derivative(self.node_value)
 
-    def data_ready_downstream(self, node):
-        if self._check_in(node, Neurode.Side.DOWNSTREAM):
+    def data_ready_downstream(self, from_node):
+        if self._check_in(from_node, MultiLinkNode.Side.DOWNSTREAM):
             self._calculate_delta()
             self._fire_upstream()
             self._update_weights()
 
-    def set_expected(self, expected_value):
+    def set_expected(self, expected_value: float):
         self._calculate_delta(expected_value)
-        for node in self._neighbors[Neurode.Side.UPSTREAM]:
-            node.data_ready_downstream(self)
+        self._fire_upstream()
 
     def adjust_weights(self, node, adjustment):
-        self._weights[node] = adjustment
+        self._weights[node] += adjustment
 
     def _update_weights(self):
-        for node in self._neighbors[Neurode.Side.DOWNSTREAM]:
-            adjustment = node.get_weight(self) + (self._value * node.delta * node.learning_rate)
+        for node in self._neighbors[MultiLinkNode.Side.DOWNSTREAM]:
+            adjustment = self._value * node.delta * node.learning_rate
             node.adjust_weights(self, adjustment)
 
     def _fire_upstream(self):
-        for node in self._neighbors[Neurode.Side.UPSTREAM]:
+        for node in self._neighbors[MultiLinkNode.Side.UPSTREAM]:
             node.data_ready_downstream(self)
 
     @property
