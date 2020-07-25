@@ -178,7 +178,7 @@ class MultiLinkNode(ABC):
 
 class Neurode(MultiLinkNode):
 
-    def __init__(self, node_type: LayerType, learning_rate=.05):
+    def __init__(self, node_type, learning_rate=.05):
         super().__init__()
         self._value = 0
         self._node_type = node_type
@@ -234,10 +234,10 @@ class FFNeurode(Neurode):
         """Calculate the weighted sum of the upstream nodes' values.
         Pass the result through self._sigmoid() and store the
         returned value into self._value"""
-        upstream_weight = 0
-        for node in self._neighbors[Neurode.Side.UPSTREAM]:
-            upstream_weight += self.get_weight(node) * self.node_value
-        self._value = self._sigmoid(upstream_weight)
+        input_sum = 0
+        for node, weight in self._weights.items():
+            input_sum += node.value * weight
+        self._value = self._sigmoid(input_sum)
 
     def _fire_downstream(self):
         """Call data_ready_upstream on each node's downstream neighbors
@@ -246,16 +246,16 @@ class FFNeurode(Neurode):
         for node in self._neighbors[Neurode.Side.DOWNSTREAM]:
             node.data_ready_upstream(self)
 
-    def data_ready_upstream(self, node):
+    def data_ready_upstream(self, from_node):
         """Upstream neurodes call this method when they have data ready."""
-        if self._check_in(node, Neurode.Side.UPSTREAM):
+        if self._check_in(from_node, MultiLinkNode.Side.UPSTREAM):
             self._calculate_values()
             self._fire_downstream()
 
-    def set_input(self, input_value):
+    def set_input(self, input_value: float):
         """Used by the client to directly set the value of an input layer neurode."""
         self._value = input_value
-        for node in self._neighbors[Neurode.Side.DOWNSTREAM]:
+        for node in self._neighbors[MultiLinkNode.Side.DOWNSTREAM]:
             node.data_ready_upstream(self)
 
 
