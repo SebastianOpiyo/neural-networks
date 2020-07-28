@@ -342,17 +342,18 @@ class DoublyLinkedList:
         pass
 
     def move_forward(self):
-        # Raise index error, if attempting to move beyond end of list.
         self._curr = self._head
+        if self._curr == self._tail:
+            raise IndexError
         try:
-            if self._curr is None or self._curr == self._tail:
+            if self._curr is None:
                 return None
             else:
                 self._curr = self._curr.next
             if self._curr is None:
                 return None
             else:
-                self._head = self._tail = self._curr
+                self._head = self._curr
                 return self._curr.data
         except IndexError:
             raise IndexError
@@ -404,10 +405,10 @@ class DoublyLinkedList:
         new_node.next = self._head
         new_node.prev = None
         self._head = new_node
-        self._tail = self._head
+        self._head.next = self._tail
 
     def add_after_cur(self, data):
-        if self._curr is self._tail:
+        if self._curr == self._tail:
             raise IndexError
         if self._curr is None:
             self.add_to_head(data)
@@ -474,6 +475,7 @@ class LayerList(DoublyLinkedList):
         self.outputs = outputs
         self.input_nodes_list = []
         self.output_nodes_list = []
+        self.hidden_nodes_list = []
 
         for input_node in range(self.inputs):
             self.input_nodes_list.append(FFBPNeurode(LayerType.INPUT))
@@ -492,7 +494,9 @@ class LayerList(DoublyLinkedList):
     def add_layer(self, num_nodes: int):
         """Creates a hidden layer of neurodes after the current layer
         (current linked list node.)"""
-        self.add_after_cur(num_nodes)
+        for node in range(num_nodes):
+            self.hidden_nodes_list.append(FFBPNeurode(LayerType.HIDDEN))
+        self.add_after_cur(self.hidden_nodes_list)
 
     def remove_layer(self):
         """Remove a layer AFTER the current layer
@@ -519,13 +523,13 @@ def layer_list_test():
     outputs = my_list.output_nodes
     assert len(inputs) == 2
     assert len(outputs) == 4
-    print("Pass")
+    # print("Pass")
     # check that each has the right number of connections
     for node in inputs:
         assert len(node._neighbors[MultiLinkNode.Side.DOWNSTREAM]) == 4
     for node in outputs:
         assert len(node._neighbors[MultiLinkNode.Side.UPSTREAM]) == 2
-    print("Pass")
+    # print("Pass")
     # check that the connections go to the right place
     for node in inputs:
         out_set = set(node._neighbors[MultiLinkNode.Side.DOWNSTREAM])
@@ -535,16 +539,16 @@ def layer_list_test():
         in_set = set(node._neighbors[MultiLinkNode.Side.UPSTREAM])
         check_set = set(inputs)
         assert in_set == check_set
-    print("Pass")
+    # print("Pass")
     # add a couple layers and check that they arrived in the right order, and that iterate and rev_iterate work
     my_list.reset_to_head()
     my_list.add_layer(3)
     my_list.add_layer(6)
-    print(my_list.get_current_data()[0].node_type)
+    print(len(my_list.get_current_data()))
     my_list.move_forward()
-    print(my_list.get_current_data()[0].node_type)
     assert my_list.get_current_data()[0].node_type == LayerType.HIDDEN
     assert len(my_list.get_current_data()) == 6
+    # print("Pass")
     my_list.move_forward()
     assert my_list.get_current_data()[0].node_type == LayerType.HIDDEN
     assert len(my_list.get_current_data()) == 3
