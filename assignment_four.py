@@ -121,49 +121,51 @@ class DoublyLinkedList:
 class LayerList(DoublyLinkedList):
     """An iterator for the DoublyLinkedList"""
 
-    def __init__(self, inputs: int, outputs: int):
+    def _link_with_next(self):
+        for node in self._current.data:
+            node.reset_neighbors(self._current.next.data, FFBPNeurode.Side.DOWNSTREAM)
+        for node in self._current.next.data:
+            node.reset_neighbors(self._current.data, FFBPNeurode.Side.UPSTREAM)
+
+    def __init__(self, inputs, outputs):
         super().__init__()
-        self.inputs = inputs
-        self.outputs = outputs
-        self.input_nodes_list = []
-        self.output_nodes_list = []
-        self.hidden_nodes_list = []
-
-        for input_node in range(self.inputs):
-            self.input_nodes_list.append(FFBPNeurode(LayerType.INPUT))
-
-        for output_node in range(self.outputs):
-            self.output_nodes_list.append(FFBPNeurode(LayerType.OUTPUT))
-
-        for node in self.input_nodes_list:
-            node.reset_neighbors(self.output_nodes_list, MultiLinkNode.Side.DOWNSTREAM)
-        for node in self.output_nodes_list:
-            node.reset_neighbors(self.input_nodes_list, MultiLinkNode.Side.UPSTREAM)
-
-        self.add_to_head(self.input_nodes_list)
-        self.add_after_cur(self.output_nodes_list)
+        if inputs < 1 or outputs < 1:
+            raise ValueError
+        input_layer = [FFBPNeurode(LayerType.INPUT) for _ in range(inputs)]
+        output_layer = [FFBPNeurode(LayerType.OUTPUT) for _ in range(outputs)]
+        self.add_to_head(input_layer)
+        self.insert_after_cur(output_layer)
+        self._link_with_next()
 
     def add_layer(self, num_nodes: int):
         """Creates a hidden layer of neurodes after the current layer
         (current linked list node.)"""
-        for node in range(num_nodes):
-            self.hidden_nodes_list.append(FFBPNeurode(LayerType.HIDDEN))
-        self.add_after_cur(self.hidden_nodes_list)
+        if self._current == self._tail:
+            raise IndexError
+        hidden_layer = [FFBPNeurode(LayerType.HIDDEN) for _ in range(num_nodes)]
+        self.insert_after_cur(hidden_layer)
+        self._link_with_next()
+        self.move_forward()
+        self._link_with_next()
+        self.move_back()
 
     def remove_layer(self):
         """Remove a layer AFTER the current layer
         - Not allowing removal of the output layer(tail) -- raise indexError"""
+        if self._current == self._tail or self._current.next == self._tail:
+            raise IndexError
         self.remove_after_cur()
+        self._link_with_next()
 
     @property
     def input_nodes(self):
         """Returns a list of input layer neurodes."""
-        return self.input_nodes_list
+        return self._head.data
 
     @property
     def output_nodes(self):
         """Returns a list of output layer neurodes."""
-        return self.output_nodes_list
+        return self._tail.data
 
 
 # Temporary test.
@@ -178,17 +180,17 @@ def layer_list_test():
     # print("Pass")
     # check that each has the right number of connections
     for node in inputs:
-        assert len(node._neighbors[MultiLinkNode.Side.DOWNSTREAM]) == 4
+        assert len(node._neighbors[FFBPNeurode.Side.DOWNSTREAM]) == 4
     for node in outputs:
-        assert len(node._neighbors[MultiLinkNode.Side.UPSTREAM]) == 2
+        assert len(node._neighbors[FFBPNeurode.Side.UPSTREAM]) == 2
     # print("Pass")
     # check that the connections go to the right place
     for node in inputs:
-        out_set = set(node._neighbors[MultiLinkNode.Side.DOWNSTREAM])
+        out_set = set(node._neighbors[FFBPNeurode.Side.DOWNSTREAM])
         check_set = set(outputs)
         assert out_set == check_set
     for node in outputs:
-        in_set = set(node._neighbors[MultiLinkNode.Side.UPSTREAM])
+        in_set = set(node._neighbors[FFBPNeurode.Side.UPSTREAM])
         check_set = set(inputs)
         assert in_set == check_set
     # print("Pass")
@@ -221,11 +223,11 @@ def layer_list_test():
         assert save_vals[i] != node.node_value
     # check that information flows back as well
     save_vals = []
-    for node in inputs[1]._neighbors[MultiLinkNode.Side.DOWNSTREAM]:
+    for node in inputs[1]._neighbors[FFBPNeurode.Side.DOWNSTREAM]:
         save_vals.append(node.delta)
     for node in outputs:
         node.set_expected(1)
-    for i, node in enumerate(inputs[1]._neighbors[MultiLinkNode.Side.DOWNSTREAM]):
+    for i, node in enumerate(inputs[1]._neighbors[FFBPNeurode.Side.DOWNSTREAM]):
         assert save_vals[i] != node.delta
     # try to remove an output layer
     try:
@@ -267,11 +269,11 @@ def layer_list_test():
         assert save_vals[i] != node.node_value
     # check that information still flows back as well
     save_vals = []
-    for node in inputs[1]._neighbors[MultiLinkNode.Side.DOWNSTREAM]:
+    for node in inputs[1]._neighbors[FFBPNeurode.Side.DOWNSTREAM]:
         save_vals.append(node.delta)
     for node in outputs:
         node.set_expected(1)
-    for i, node in enumerate(inputs[1]._neighbors[MultiLinkNode.Side.DOWNSTREAM]):
+    for i, node in enumerate(inputs[1]._neighbors[FFBPNeurode.Side.DOWNSTREAM]):
         assert save_vals[i] != node.delta
     assert saved_val == save_list[0].value
 

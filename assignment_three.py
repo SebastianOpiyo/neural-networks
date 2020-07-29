@@ -1,6 +1,7 @@
 from enum import Enum
 from abc import ABC, abstractmethod
 import random as rndm
+import numpy as np
 
 
 class LayerType(Enum):
