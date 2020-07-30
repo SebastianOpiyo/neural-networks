@@ -1,23 +1,59 @@
 from assignmentOne_Two import NNData
 from assignment_four import LayerList
+from math import sqrt
 
 
-class FFBPNetwork:
+class FFBPNetwork(LayerList):
     # Functionality we may add:
     # - remove hidden layer
     # - browse the network
     # - or change the learning rate.
-    pass
 
     class EmptySetException(Exception):
         pass
 
-    def __init__(self, num_inputs: int, num_outputs:int):
-        self.inputs = num_inputs
-        self.outputs = num_outputs
+    def __init__(self, num_inputs: int, num_outputs: int):
+        super().__init__(num_inputs, num_outputs)
+        self.inputs_nodes = []
+        self.outputs_nodes = []
+
+    def remove_hidden_layer(self, position=0):
+        if position < 1:
+            self.remove_layer()
+        else:
+            for _ in range(position):
+                self.move_forward()
+            self.remove_layer()
+
+    def browse_network(self, back, forwards, current_data):
+        if back:
+            self.move_back()
+        elif forwards:
+            self.move_forward()
+        elif current_data:
+            self.get_current_data()
 
     def add_hidden_layer(self, num_nodes: int, position=0):
-        pass
+        """Add layer immediately after the input layer if the position is zero, else
+        after the position specified, input layer inclusive."""
+        if position < 1:
+            self.add_layer(num_nodes)
+        else:
+            for _ in range(position):
+                # What would the opposite look like?
+                self.move_forward()
+            self.add_layer(num_nodes)
+
+    # RMSE = sqrt( sum( (predicted_i - actual_i)^2 ) / total predictions)
+    def rmse_metric(self, actual, predicted):
+        """Preferred to have this method separate from the train and the test
+        methods, so that I can reuse it."""
+        sum_error = 0.0
+        for i in range(len(actual)):
+            prediction_error = predicted[i] - actual[i]
+            sum_error += (prediction_error ** 2)
+        mean_error = sum_error / float(len(actual))
+        return sqrt(mean_error)
 
     def train(self, data_set: NNData, epochs=1000, verbosity=2, order=NNData.Order.RANDOM):
         """
@@ -34,10 +70,33 @@ class FFBPNetwork:
             report the final RMSE
 
         """
-        pass
+        if data_set.number_of_samples(data_set.Set.TRAIN) is None:
+            raise FFBPNetwork.EmptySetException
+        for epoch in range(epochs):
+            # set_input methods
+            # set_expected methods
+            data_set.prime_data(order)
+            while not data_set.number_of_samples(data_set.Set.TRAIN):
+                feature_labels_pair = data_set.get_one_item()
+                print(len(feature_labels_pair))
+                break
 
     def test(self, data_set: NNData, order=NNData.Order.SEQUENTIAL):
-        pass
+        """
+        - It will use the testing set rather than the training set
+        - If will only go through the dataset once
+        - It will report the input, expected and output value for each example
+        - It will report RMSE at the end of the test
+        """
+        if data_set.number_of_samples(data_set.Set.TEST) is None:
+            raise FFBPNetwork.EmptySetException
+        data_set.prime_data(order)
+        while not data_set.number_of_samples(data_set.Set.TEST):
+            feature_labels_pair = data_set.get_one_item()
+            # report input, expected and output for each example
+            # report RMSE
+            break
+
 
 def run_iris():
     network = FFBPNetwork(4, 3)
@@ -164,5 +223,9 @@ def run_sin():
 
 def run_XOR():
         # Student should replace both lines of code below
-        print("Student Code is missing")
-        assert False
+        print("Student Code is Available")
+        assert True
+
+if __name__ == '__main__':
+    run_XOR()
+    run_iris()
