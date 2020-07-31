@@ -1,7 +1,7 @@
 #!/bin/python3
 # Author:
 # Date Created: June 29, 2020
-# Date Modified: July 11, 2020
+# Date Modified: July 31, 2020
 # Description: Neural Networks capstone project.
 
 # Imports
@@ -133,4 +133,5 @@ def load_XOR():
     XOR_X = [[0, 0], [1, 0], [0, 1], [1, 1]]
     XOR_Y = [[0], [1], [1], [0]]
     data = NNData(XOR_X, XOR_Y, 1)
+    return data
 

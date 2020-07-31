@@ -1,21 +1,40 @@
-from assignmentOne_Two import NNData
+from assignmentOne_Two import NNData, load_XOR
 from assignment_four import LayerList
+from assignment_three import FFBPNeurode
 from math import sqrt
 
 
 class FFBPNetwork(LayerList):
-    # Functionality we may add:
-    # - remove hidden layer
-    # - browse the network
-    # - or change the learning rate.
+    """A base class that offers training and testing,
+    One that the client will directly interact with most of the time."""
 
     class EmptySetException(Exception):
-        pass
+        print("The training/testing set appears to be Empty!!")
 
     def __init__(self, num_inputs: int, num_outputs: int):
         super().__init__(num_inputs, num_outputs)
-        self.inputs_nodes = []
-        self.outputs_nodes = []
+        self.inputs_x_feature = None
+        self.outputs_y_labels = None
+        self._verbose = 0
+        self._epochs = 0
+        self._epoch_counter = 0
+
+    @staticmethod
+    def alter_learning_rate(new_learning_rate_value):
+        FFBPNeurode.learning_rate = new_learning_rate_value
+
+    def verbosity_print(self, value=None):
+        self._verbose = value
+        if self._verbose == 0:
+            # Silent
+            print()
+        elif self._verbose == 1:
+            value = ''
+            for _ in range(self._epochs):
+                value += '='
+            print(f'[{value}]')
+        elif self._verbose == 2:
+            print(f'{self._epoch_counter}/{self._epochs}')
 
     def remove_hidden_layer(self, position=0):
         if position < 1:
@@ -25,13 +44,25 @@ class FFBPNetwork(LayerList):
                 self.move_forward()
             self.remove_layer()
 
-    def browse_network(self, back, forwards, current_data):
-        if back:
+    def browse_network(self):
+        """Enables one to move across the network layers,
+        or return the data value of the current neural layer.
+        """
+
+        print("Please enter the following options to navigate the network and print data:\n"
+              "1. back/b OR 2. forward/f OR 3. current data/CD")
+        browse_option = input("Enter your navigation Option:__")
+        if browse_option == "back" or browse_option == "b":
             self.move_back()
-        elif forwards:
+            print("Success! Moved a step back in the Network")
+        elif browse_option == "forwards" or browse_option == "f":
             self.move_forward()
-        elif current_data:
-            self.get_current_data()
+            print("Success! Moved a step forward in the Network")
+        elif browse_option == "current data" or browse_option == "CD":
+            current_data = self.get_current_data()
+            print(f'Current Data is: {current_data}')
+        else:
+            print("Wrong Entry: Kindly follow instructions!")
 
     def add_hidden_layer(self, num_nodes: int, position=0):
         """Add layer immediately after the input layer if the position is zero, else
@@ -40,14 +71,14 @@ class FFBPNetwork(LayerList):
             self.add_layer(num_nodes)
         else:
             for _ in range(position):
-                # What would the opposite look like?
                 self.move_forward()
             self.add_layer(num_nodes)
 
-    # RMSE = sqrt( sum( (predicted_i - actual_i)^2 ) / total predictions)
-    def rmse_metric(self, actual, predicted):
-        """Preferred to have this method separate from the train and the test
-        methods, so that I can reuse it."""
+    @staticmethod
+    def rmse_calculator(actual, predicted):
+        """The Formulae:
+                       RMSE = sqrt( sum( (predicted_i - actual_i)^2 ) / total predictions)
+        """
         sum_error = 0.0
         for i in range(len(actual)):
             prediction_error = predicted[i] - actual[i]
@@ -70,16 +101,32 @@ class FFBPNetwork(LayerList):
             report the final RMSE
 
         """
+        self._epochs = epochs
+        self._epoch_counter = 0
         if data_set.number_of_samples(data_set.Set.TRAIN) is None:
             raise FFBPNetwork.EmptySetException
         for epoch in range(epochs):
-            # set_input methods
-            # set_expected methods
-            data_set.prime_data(order)
+            data_set.prime_data(data_set.Set.TRAIN, order)
             while not data_set.number_of_samples(data_set.Set.TRAIN):
                 feature_labels_pair = data_set.get_one_item()
-                print(len(feature_labels_pair))
-                break
+                print(feature_labels_pair[1])
+                expected_list = []
+                actual_list = []
+                for feature in feature_labels_pair[0]:
+                    self.inputs_x_feature = feature
+                    FFBPNeurode.set_input(self.inputs_x_feature)
+                    expected_list.append(self.inputs_x_feature)
+                    for label in feature_labels_pair[1]:
+                        self.outputs_y_labels = label.value
+                        FFBPNeurode.set_expected(self.outputs_y_labels)
+                        actual_list.append(self.outputs_y_labels)
+                try:
+                    ret_rmse = FFBPNetwork.rmse_calculator(expected_list, actual_list)
+                    self._epoch_counter += 1
+                    print(f'EXPECTED: {expected_list}, ACTUAL: {actual_list}, RMSE VALUE: {ret_rmse}')
+                except FFBPNetwork.EmptySetException:
+                    print("Zero Division Error Due to Empty Set.")
+            self.verbosity_print(verbosity)
 
     def test(self, data_set: NNData, order=NNData.Order.SEQUENTIAL):
         """
@@ -90,12 +137,27 @@ class FFBPNetwork(LayerList):
         """
         if data_set.number_of_samples(data_set.Set.TEST) is None:
             raise FFBPNetwork.EmptySetException
-        data_set.prime_data(order)
+        data_set.prime_data(data_set.Set.TEST, order)
         while not data_set.number_of_samples(data_set.Set.TEST):
             feature_labels_pair = data_set.get_one_item()
-            # report input, expected and output for each example
-            # report RMSE
-            break
+            print(feature_labels_pair[0])
+            expected_list = []
+            actual_list = []
+            for feature in feature_labels_pair[0]:
+                self.inputs_x_feature = feature
+                FFBPNeurode.set_input(self.inputs_x_feature)
+                expected_list.append(self.inputs_x_feature)
+            for label in feature_labels_pair[1]:
+                self.outputs_y_labels = label.value
+                FFBPNeurode.set_expected(self.outputs_y_labels)
+                actual_list.append(self.outputs_y_labels)
+            try:
+                ret_rmse = FFBPNetwork.rmse_calculator(expected_list, actual_list)
+                print(f'INPUT: {feature_labels_pair[0]}, EXPECTED: {expected_list}, '
+                      f'OUTPUT: {actual_list}, RMSE VALUE: {ret_rmse}')
+            except FFBPNetwork.EmptySetException:
+                print("Zero Division Error Due to Empty Set.")
+        self.verbosity_print()
 
 
 def run_iris():
@@ -222,10 +284,14 @@ def run_sin():
 
 
 def run_XOR():
-        # Student should replace both lines of code below
-        print("Student Code is Available")
-        assert True
+    data = load_XOR()
+    network = FFBPNetwork(1, 1)
+    network.add_hidden_layer(3)
+    network.train(data, 3000, order=NNData.Order.RANDOM)
+    network.test(data)
+
 
 if __name__ == '__main__':
-    run_XOR()
     run_iris()
+    run_sin()
+    # run_XOR()
