@@ -86,7 +86,7 @@ class FFBPNetwork(LayerList):
         mean_error = sum_error / float(len(actual))
         return sqrt(mean_error)
 
-    def train(self, data_set: NNData, epochs=10, verbosity=2, order=NNData.Order.RANDOM):
+    def train(self, data_set: NNData, epochs=1000, verbosity=2, order=NNData.Order.RANDOM):
         """
         # Pseudo code to help in the coding:
         If the training set is empty, raise EmptySetException
@@ -107,26 +107,24 @@ class FFBPNetwork(LayerList):
             raise FFBPNetwork.EmptySetException
         for epoch in range(epochs):
             data_set.prime_data(data_set.Set.TRAIN, order)
-            while not data_set.pool_is_empty(data_set.Set.TRAIN):
+            while not data_set.number_of_samples(data_set.Set.TRAIN):
                 feature_labels_pair = data_set.get_one_item()
-                feature_list = feature_labels_pair[0]
-                label_list = feature_labels_pair[1]
-                input_neurodes = self.input_nodes
-                output_neurodes = self.output_nodes
+                print(feature_labels_pair[1])
                 expected_list = []
                 actual_list = []
-                for feature, input_node in zip(feature_list, input_neurodes):
-                    input_node.set_input(feature)
-                for output_node, label in zip(output_neurodes, label_list):
-                    output_node.set_expected(label)
-                for expected, actual in zip(feature_list, output_neurodes):
-                    expected_list.append(expected)
-                    actual_list.append(actual.node_value)
+                for feature in feature_labels_pair[0]:
+                    self.inputs_x_feature = feature
+                    FFBPNeurode.set_input(self.inputs_x_feature)
+                    expected_list.append(self.inputs_x_feature)
+                    for label in feature_labels_pair[1]:
+                        self.outputs_y_labels = label.value
+                        FFBPNeurode.set_expected(self.outputs_y_labels)
+                        actual_list.append(self.outputs_y_labels)
                 try:
-                    ret_rmse = FFBPNetwork.rmse_calculator(actual_list, expected_list)
+                    ret_rmse = FFBPNetwork.rmse_calculator(expected_list, actual_list)
                     self._epoch_counter += 1
                     print(f'EXPECTED: {expected_list}, ACTUAL: {actual_list}, RMSE VALUE: {ret_rmse}')
-                except IndexError:
+                except FFBPNetwork.EmptySetException:
                     print("Zero Division Error Due to Empty Set.")
             self.verbosity_print(verbosity)
 
@@ -139,30 +137,23 @@ class FFBPNetwork(LayerList):
         """
         if data_set.number_of_samples(data_set.Set.TEST) is None:
             raise FFBPNetwork.EmptySetException
-        print(data_set.prime_data(data_set.Set.TEST, order))
-        while not data_set.pool_is_empty(data_set.Set.TEST):
+        data_set.prime_data(data_set.Set.TEST, order)
+        while not data_set.number_of_samples(data_set.Set.TEST):
             feature_labels_pair = data_set.get_one_item()
-            feature_list = feature_labels_pair[0]
-            print(feature_list)
-            label_list = feature_labels_pair[1]
-            print(label_list)
-            input_neurodes = self.input_nodes
-            output_neurodes = self.output_nodes
+            print(feature_labels_pair[0])
             expected_list = []
             actual_list = []
-            input_list = []
-            for i in input_neurodes:
-                input_list.append(i.node_value)
-            for feature, input_node in zip(feature_list, input_neurodes):
-                input_node.set_input(feature)
-            for output_node, label in zip(output_neurodes, label_list):
-                output_node.set_expected(label)
-            for expected, actual in zip(feature_list, output_neurodes):
-                expected_list.append(expected)
-                actual_list.append(actual.node_value)
+            for feature in feature_labels_pair[0]:
+                self.inputs_x_feature = feature
+                FFBPNeurode.set_input(self.inputs_x_feature)
+                expected_list.append(self.inputs_x_feature)
+            for label in feature_labels_pair[1]:
+                self.outputs_y_labels = label.value
+                FFBPNeurode.set_expected(self.outputs_y_labels)
+                actual_list.append(self.outputs_y_labels)
             try:
-                ret_rmse = FFBPNetwork.rmse_calculator(actual_list, expected_list)
-                print(f'INPUT: {input_list}, EXPECTED: {expected_list}, '
+                ret_rmse = FFBPNetwork.rmse_calculator(expected_list, actual_list)
+                print(f'INPUT: {feature_labels_pair[0]}, EXPECTED: {expected_list}, '
                       f'OUTPUT: {actual_list}, RMSE VALUE: {ret_rmse}')
             except FFBPNetwork.EmptySetException:
                 print("Zero Division Error Due to Empty Set.")
@@ -231,11 +222,7 @@ def run_iris():
               [0, 0, 1, ], [0, 0, 1, ], [0, 0, 1, ], [0, 0, 1, ], [0, 0, 1, ], [0, 0, 1, ], [0, 0, 1, ],
               [0, 0, 1, ], [0, 0, 1, ], [0, 0, 1, ]]
     data = NNData(Iris_X, Iris_Y, .7)
-    print("----------------------------------------")
-    print("Train")
-    # network.train(data, 10, order=NNData.Order.RANDOM)
-    print("----------------------------------------")
-    print("Test")
+    network.train(data, 10001, order=NNData.Order.RANDOM)
     network.test(data)
 
 
@@ -292,11 +279,7 @@ def run_sin():
              [0.998152472497548], [0.998710143975583], [0.999167945271476], [0.999525830605479],
              [0.999783764189357], [0.999941720229966], [0.999999682931835]]
     data = NNData(sin_X, sin_Y, .1)
-    print("----------------------------------------")
-    print("Train")
-    network.train(data, 10, order=NNData.Order.RANDOM)
-    print("----------------------------------------")
-    print("Test")
+    network.train(data, 10001, order=NNData.Order.RANDOM)
     network.test(data)
 
 
@@ -304,15 +287,11 @@ def run_XOR():
     data = load_XOR()
     network = FFBPNetwork(1, 1)
     network.add_hidden_layer(3)
-    print("----------------------------------------")
-    print("Train")
     network.train(data, 3000, order=NNData.Order.RANDOM)
-    print("----------------------------------------")
-    print("Test")
     network.test(data)
 
 
 if __name__ == '__main__':
     run_iris()
-    # run_sin()
-    # run_XOR()
+    run_sin()
+    run_XOR()
