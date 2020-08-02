@@ -87,12 +87,12 @@ class NNData:
         """This method will load one or both deques to be used as indirect indices. """
         if order is None:
             order = NNData.Order.SEQUENTIAL
-        elif my_set is not NNData.Set.TRAIN:
+        if my_set is not NNData.Set.TRAIN:
             test_indices_temp = list(self._test_indices)
             if order == NNData.Order.RANDOM:
                 rndm.shuffle(test_indices_temp)
             self._test_pool = collections.deque(test_indices_temp)
-        elif my_set is not NNData.Set.TEST:
+        if my_set is not NNData.Set.TEST:
             train_indices_temp = list(self._train_indices)
             if order == NNData.Order.RANDOM:
                 rndm.shuffle(train_indices_temp)
