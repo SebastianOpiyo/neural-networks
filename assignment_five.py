@@ -9,12 +9,10 @@ class FFBPNetwork(LayerList):
     One that the client will directly interact with most of the time."""
 
     class EmptySetException(Exception):
-        print("The training/testing set appears to be Empty!!")
+        pass
 
     def __init__(self, num_inputs: int, num_outputs: int):
         super().__init__(num_inputs, num_outputs)
-        self.inputs_x_feature = None
-        self.outputs_y_labels = None
         self._verbose = 0
         self._epochs = 0
         self._epoch_counter = 0
@@ -86,7 +84,7 @@ class FFBPNetwork(LayerList):
         mean_error = sum_error / float(len(actual))
         return sqrt(mean_error)
 
-    def train(self, data_set: NNData, epochs=10, verbosity=2, order=NNData.Order.RANDOM):
+    def train(self, data_set: NNData, epochs=1000, verbosity=2, order=NNData.Order.RANDOM):
         """
         # Pseudo code to help in the coding:
         If the training set is empty, raise EmptySetException
@@ -103,12 +101,13 @@ class FFBPNetwork(LayerList):
         """
         self._epochs = epochs
         self._epoch_counter = 0
-        if data_set.number_of_samples(data_set.Set.TRAIN) is None:
+        rmse_list = []
+        if not data_set.number_of_samples(data_set.Set.TRAIN):
             raise FFBPNetwork.EmptySetException
         for epoch in range(epochs):
             data_set.prime_data(data_set.Set.TRAIN, order)
             while not data_set.pool_is_empty(data_set.Set.TRAIN):
-                feature_labels_pair = data_set.get_one_item()
+                feature_labels_pair = data_set.get_one_item(data_set.Set.TRAIN)
                 feature_list = feature_labels_pair[0]
                 label_list = feature_labels_pair[1]
                 input_neurodes = self.input_nodes
@@ -125,9 +124,13 @@ class FFBPNetwork(LayerList):
                 try:
                     ret_rmse = FFBPNetwork.rmse_calculator(actual_list, expected_list)
                     self._epoch_counter += 1
-                    print(f'EXPECTED: {expected_list}, ACTUAL: {actual_list}, RMSE VALUE: {ret_rmse}')
+                    rmse_list.append(ret_rmse)
+                    print(f'EXPECTED: {feature_list}, ACTUAL: {label_list}, RMSE VALUE: {ret_rmse}')
                 except IndexError:
                     print("Zero Division Error Due to Empty Set.")
+            # report the final RMSE
+            for rmse in range(0, len(rmse_list), 100):
+                print(f'EPOCH {rmse} = {rmse_list[rmse]}')
             self.verbosity_print(verbosity)
 
     def test(self, data_set: NNData, order=NNData.Order.SEQUENTIAL):
@@ -137,22 +140,20 @@ class FFBPNetwork(LayerList):
         - It will report the input, expected and output value for each example
         - It will report RMSE at the end of the test
         """
-        if data_set.number_of_samples(data_set.Set.TEST) is None:
+
+        if not data_set.number_of_samples(data_set.Set.TEST):
             raise FFBPNetwork.EmptySetException
-        print(data_set.prime_data(data_set.Set.TEST, order))
+
+        rmse_list = []
+        data_set.prime_data(data_set.Set.TEST, order)
         while not data_set.pool_is_empty(data_set.Set.TEST):
-            feature_labels_pair = data_set.get_one_item()
+            feature_labels_pair = data_set.get_one_item(data_set.Set.TEST)
             feature_list = feature_labels_pair[0]
-            print(feature_list)
             label_list = feature_labels_pair[1]
-            print(label_list)
             input_neurodes = self.input_nodes
             output_neurodes = self.output_nodes
             expected_list = []
             actual_list = []
-            input_list = []
-            for i in input_neurodes:
-                input_list.append(i.node_value)
             for feature, input_node in zip(feature_list, input_neurodes):
                 input_node.set_input(feature)
             for output_node, label in zip(output_neurodes, label_list):
@@ -162,10 +163,14 @@ class FFBPNetwork(LayerList):
                 actual_list.append(actual.node_value)
             try:
                 ret_rmse = FFBPNetwork.rmse_calculator(actual_list, expected_list)
-                print(f'INPUT: {input_list}, EXPECTED: {expected_list}, '
-                      f'OUTPUT: {actual_list}, RMSE VALUE: {ret_rmse}')
-            except FFBPNetwork.EmptySetException:
+                self._epoch_counter += 1
+                rmse_list.append(ret_rmse)
+                print(f'EXPECTED: {feature_list}, ACTUAL: {label_list}, RMSE VALUE: {ret_rmse}')
+            except IndexError:
                 print("Zero Division Error Due to Empty Set.")
+        # report the final RMSE
+        for rmse in range(0, len(rmse_list), 100):
+            print(f'EPOCH {rmse} = {rmse_list[rmse]}')
         self.verbosity_print()
 
 
@@ -233,10 +238,11 @@ def run_iris():
     data = NNData(Iris_X, Iris_Y, .7)
     print("----------------------------------------")
     print("Train")
-    # network.train(data, 10, order=NNData.Order.RANDOM)
+    network.alter_learning_rate(.8)
+    network.train(data, 1000, order=NNData.Order.RANDOM)
     print("----------------------------------------")
     print("Test")
-    network.test(data)
+    network.test(data, order=NNData.Order.SEQUENTIAL)
 
 
 def run_sin():
@@ -294,7 +300,7 @@ def run_sin():
     data = NNData(sin_X, sin_Y, .1)
     print("----------------------------------------")
     print("Train")
-    network.train(data, 10, order=NNData.Order.RANDOM)
+    network.train(data, 1000, order=NNData.Order.RANDOM)
     print("----------------------------------------")
     print("Test")
     network.test(data)
@@ -306,13 +312,13 @@ def run_XOR():
     network.add_hidden_layer(3)
     print("----------------------------------------")
     print("Train")
-    network.train(data, 3000, order=NNData.Order.RANDOM)
+    network.train(data, 1000, order=NNData.Order.RANDOM)
     print("----------------------------------------")
     print("Test")
-    network.test(data)
+    network.test(data, order=NNData.Order.SEQUENTIAL)
 
 
 if __name__ == '__main__':
-    run_iris()
+    # run_iris()
     # run_sin()
-    # run_XOR()
+    run_XOR()
