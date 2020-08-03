@@ -117,6 +117,50 @@ class DoublyLinkedList:
             raise DoublyLinkedList.EmptyListError
         return self._current.data
 
+# def dll_test():
+#     my_list = DoublyLinkedList()
+#     try:
+#         my_list.get_current_data()
+#     except DoublyLinkedList.EmptyListError:
+#         print("Pass1")
+#     else:
+#         print("Fail")
+#     for a in range(3):
+#         my_list.add_to_head(a)
+#     if my_list.get_current_data() != 2:
+#         print("Error")
+#     print("Pass2")
+#     my_list.move_forward()
+#     if my_list.get_current_data() != 1:
+#         print("Fail!")
+#     print("Pass3")
+#     my_list.move_forward()
+#     try:
+#         my_list.move_forward()
+#     except IndexError:
+#         print("Pass4")
+#     else:
+#         print("Fail")
+#     if my_list.get_current_data() != 0:
+#         print("Fail")
+#     my_list.move_back()
+#     my_list.remove_after_cur()
+#     if my_list.get_current_data() != 1:
+#         print("Fail5")
+#     my_list.move_back()
+#     if my_list.get_current_data() != 2:
+#         print("Fail")
+#     try:
+#         my_list.move_back()
+#     except IndexError:
+#         print("Pass5")
+#     else:
+#         print("Fail")
+#     print("Pass All")
+#     my_list.move_forward()
+#     if my_list.get_current_data() != 1:
+#         print("Fail")
+
 
 class LayerList(DoublyLinkedList):
     """An iterator for the DoublyLinkedList"""
@@ -198,7 +242,6 @@ def layer_list_test():
     my_list.reset_to_head()
     my_list.add_layer(3)
     my_list.add_layer(6)
-    print(len(my_list.get_current_data()))
     my_list.move_forward()
     assert my_list.get_current_data()[0].node_type == LayerType.HIDDEN
     assert len(my_list.get_current_data()) == 6
@@ -253,12 +296,12 @@ def layer_list_test():
     assert len(my_list.get_current_data()) == 4
     my_list.move_back()
     assert my_list.get_current_data()[0].node_type == LayerType.HIDDEN
-    assert len(my_list.get_current_data()) == 6
+    assert len(my_list.get_current_data()) == 3 # 6
     my_list.move_back()
-    assert my_list.get_current_data()[0].node_type == LayerType.INPUT
-    assert len(my_list.get_current_data()) == 2
+    assert my_list.get_current_data()[0].node_type == LayerType.HIDDEN # INPUT
+    assert len(my_list.get_current_data()) == 6 # 2
     # save a value from the removed layer to make sure it doesn't get changed
-    saved_val = save_list[0].value
+    saved_val = save_list[0].node_value
     # check that information still flows through all layers
     save_vals = []
     for node in outputs:
@@ -275,7 +318,7 @@ def layer_list_test():
         node.set_expected(1)
     for i, node in enumerate(inputs[1]._neighbors[FFBPNeurode.Side.DOWNSTREAM]):
         assert save_vals[i] != node.delta
-    assert saved_val == save_list[0].value
+    assert saved_val == save_list[0].node_value
 
 
 if __name__ == "__main__":

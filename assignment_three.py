@@ -11,6 +11,7 @@ class LayerType(Enum):
 
 
 class MultiLinkNode(ABC):
+
     class Side(Enum):
         UPSTREAM = 0
         DOWNSTREAM = 1
@@ -61,7 +62,7 @@ class Neurode(MultiLinkNode):
     def _check_in(self, node, side: MultiLinkNode.Side):
         """Called whenever a node learns that a neighboring node has information available."""
         node_index = self._neighbors[side].index(node)
-        self._reporting_nodes[side] = \
+        self._reporting_nodes[side] =\
             self._reporting_nodes[side] | 1 << node_index
         if self._reporting_nodes[side] == self._reference_value[side]:
             self._reporting_nodes[side] = 0
@@ -183,3 +184,146 @@ class FFBPNeurode(FFNeurode, BPNeurode):
         FFNeurode.__init__(self, my_type)
         BPNeurode.__init__(self, my_type)
         pass
+
+
+# Temporary Test.
+def main():
+    try:
+        test_neurode = BPNeurode(0)
+    except:
+        print("Error - Cannot instaniate a BPNeurode object")
+        return
+    print("Testing Sigmoid Derivative")
+    try:
+        assert BPNeurode._sigmoid_derivative(0) == 0
+        if test_neurode._sigmoid_derivative(.4) == .24:
+            print("Pass")
+        else:
+            print("_sigmoid_derivative is not returning the correct "
+                  "result")
+    except:
+        print("Error - Is _sigmoid_derivative named correctly, created "
+              "in BPNeurode and decorated as a static method?")
+    print("Testing Instance objects")
+    try:
+        test_neurode.learning_rate
+        test_neurode.delta
+        print("Pass")
+    except:
+        print("Error - Are all instance objects created in __init__()?")
+
+    inodes = []
+    hnodes = []
+    onodes = []
+    for k in range(2):
+        inodes.append(FFBPNeurode(LayerType.INPUT))
+        hnodes.append(FFBPNeurode(LayerType.HIDDEN))
+        onodes.append(FFBPNeurode(LayerType.OUTPUT))
+    for node in inodes:
+        node.reset_neighbors(hnodes, MultiLinkNode.Side.DOWNSTREAM)
+    for node in hnodes:
+        node.reset_neighbors(inodes, MultiLinkNode.Side.UPSTREAM)
+        node.reset_neighbors(onodes, MultiLinkNode.Side.DOWNSTREAM)
+    for node in onodes:
+        node.reset_neighbors(hnodes, MultiLinkNode.Side.UPSTREAM)
+    print("testing learning rate values")
+    for node in hnodes:
+        print(f"my learning rate is {node.learning_rate}")
+    print("Testing check-in")
+    try:
+        hnodes[0]._reporting_nodes[MultiLinkNode.Side.DOWNSTREAM] = 1
+        if hnodes[0]._check_in(onodes[1], MultiLinkNode.Side.DOWNSTREAM) and \
+                not hnodes[1]._check_in(onodes[1],
+                                        MultiLinkNode.Side.DOWNSTREAM):
+            print("Pass")
+        else:
+            print("Error - _check_in is not responding correctly")
+    except:
+        print("Error - _check_in is raising an error.  Is it named correctly? "
+              "Check your syntax")
+    print("Testing calculate_delta on output nodes")
+    try:
+        onodes[0]._value = .2
+        onodes[0]._calculate_delta(.5)
+        if .0479 < onodes[0]._delta < .0481:
+            print("Pass")
+        else:
+            print("Error - calculate delta is not returning the correct value."
+                  "Check the math.")
+            print("        Hint: do you have a separate process for hidden "
+                  "nodes vs output nodes?")
+    except Exception as ex:
+        print("Error - calculate_delta is raising an error.  Is it named "
+              "correctly?  Check your syntax")
+        print(repr(ex))
+    print("Testing calculate_delta on hidden nodes")
+    try:
+        onodes[0]._delta = .2
+        onodes[1]._delta = .1
+        onodes[0]._weights[hnodes[0]] = .4
+        onodes[1]._weights[hnodes[0]] = .6
+        hnodes[0]._value = .3
+        hnodes[0]._calculate_delta()
+        if .02939 < hnodes[0]._delta < .02941:
+            print("Pass")
+        else:
+            print("Error - calculate delta is not returning the correct value.  "
+                  "Check the math.")
+            print("        Hint: do you have a separate process for hidden "
+                  "nodes vs output nodes?")
+    except Exception as ex:
+        print("Error - calculate_delta is raising an error.  Is it named correctly?  Check your syntax")
+        print(repr(ex))
+    try:
+        print("Testing update_weights")
+        hnodes[0]._update_weights()
+        if onodes[0]._learning_rate == .05:
+            if .4 + .06 * onodes[0]._learning_rate - .001 < \
+                    onodes[0]._weights[hnodes[0]] < \
+                    .4 + .06 * onodes[0]._learning_rate + .001:
+                print("Pass")
+            else:
+                print("Error - weights not updated correctly.  "
+                      "If all other methods passed, check update_weights")
+        else:
+            print("Error - Learning rate should be .05, please verify")
+    except Exception as ex:
+        print("Error - update_weights is raising an error.  Is it named "
+              "correctly?  Check your syntax")
+        print(repr(ex))
+    print("All that looks good.  Trying to train a trivial dataset "
+          "on our network")
+    inodes = []
+    hnodes = []
+    onodes = []
+    for k in range(2):
+        inodes.append(FFBPNeurode(LayerType.INPUT))
+        hnodes.append(FFBPNeurode(LayerType.HIDDEN))
+        onodes.append(FFBPNeurode(LayerType.OUTPUT))
+    for node in inodes:
+        node.reset_neighbors(hnodes, MultiLinkNode.Side.DOWNSTREAM)
+    for node in hnodes:
+        node.reset_neighbors(inodes, MultiLinkNode.Side.UPSTREAM)
+        node.reset_neighbors(onodes, MultiLinkNode.Side.DOWNSTREAM)
+    for node in onodes:
+        node.reset_neighbors(hnodes, MultiLinkNode.Side.UPSTREAM)
+    inodes[0].set_input(1)
+    inodes[1].set_input(0)
+    value1 = onodes[0]._value
+    value2 = onodes[1]._value
+    onodes[0].set_expected(0)
+    onodes[1].set_expected(1)
+    inodes[0].set_input(1)
+    inodes[1].set_input(0)
+    value1a = onodes[0]._value
+    value2a = onodes[1]._value
+    if (value1 - value1a > 0) and (value2a - value2 > 0):
+        print("Pass - Learning was done!")
+    else:
+        print("Fail - the network did not make progress.")
+        print("If you hit a wall, be sure to seek help in the discussion "
+              "forum, from the instructor and from the tutors")
+
+
+if __name__ == "__main__":
+    main()
