@@ -42,6 +42,7 @@ class NNData:
         except (ValueError, DataMismatchError):
             self._labels = None
             self._features = None
+            return
         self.split_set()
 
     @staticmethod
@@ -132,6 +133,6 @@ class NNData:
 def load_XOR():
     XOR_X = [[0, 0], [1, 0], [0, 1], [1, 1]]
     XOR_Y = [[0], [1], [1], [0]]
-    data = NNData(XOR_X, XOR_Y, 1)
+    data = NNData(XOR_X, XOR_Y, .7)
     return data
 
