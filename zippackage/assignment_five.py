@@ -2,6 +2,8 @@ from assignmentOne_Two import NNData, load_XOR
 from assignment_four import LayerList
 from assignment_three import FFBPNeurode
 from math import sqrt
+from matplotlib import pyplot as plt
+from matplotlib import style
 
 
 class FFBPNetwork(LayerList):
@@ -9,12 +11,10 @@ class FFBPNetwork(LayerList):
     One that the client will directly interact with most of the time."""
 
     class EmptySetException(Exception):
-        print("The training/testing set appears to be Empty!!")
+        pass
 
     def __init__(self, num_inputs: int, num_outputs: int):
         super().__init__(num_inputs, num_outputs)
-        self.inputs_x_feature = None
-        self.outputs_y_labels = None
         self._verbose = 0
         self._epochs = 0
         self._epoch_counter = 0
@@ -103,29 +103,33 @@ class FFBPNetwork(LayerList):
         """
         self._epochs = epochs
         self._epoch_counter = 0
-        if data_set.number_of_samples(data_set.Set.TRAIN) is None:
+        rmse_list = []
+        if not data_set.number_of_samples(data_set.Set.TRAIN):
             raise FFBPNetwork.EmptySetException
         for epoch in range(epochs):
             data_set.prime_data(data_set.Set.TRAIN, order)
-            while not data_set.number_of_samples(data_set.Set.TRAIN):
-                feature_labels_pair = data_set.get_one_item()
-                print(feature_labels_pair[1])
-                expected_list = []
+            while not data_set.pool_is_empty(data_set.Set.TRAIN):
+                feature_labels_pair = data_set.get_one_item(data_set.Set.TRAIN)
+                label_list = feature_labels_pair[1]
+                feature_list = feature_labels_pair[0]
+                expected_list = label_list
                 actual_list = []
-                for feature in feature_labels_pair[0]:
-                    self.inputs_x_feature = feature
-                    FFBPNeurode.set_input(self.inputs_x_feature)
-                    expected_list.append(self.inputs_x_feature)
-                    for label in feature_labels_pair[1]:
-                        self.outputs_y_labels = label.value
-                        FFBPNeurode.set_expected(self.outputs_y_labels)
-                        actual_list.append(self.outputs_y_labels)
+                for feature, input_node in zip(feature_list, self.input_nodes):
+                    input_node.set_input(feature)
+                for node in self.output_nodes:
+                    actual_list.append(node.node_value)
+                for label, actual in zip(label_list, self.output_nodes):
+                    actual.set_expected(label)
                 try:
-                    ret_rmse = FFBPNetwork.rmse_calculator(expected_list, actual_list)
+                    ret_rmse = FFBPNetwork.rmse_calculator(actual_list, expected_list)
                     self._epoch_counter += 1
-                    print(f'EXPECTED: {expected_list}, ACTUAL: {actual_list}, RMSE VALUE: {ret_rmse}')
-                except FFBPNetwork.EmptySetException:
+                    rmse_list.append(ret_rmse)
+                    print(f'SAMPLE: {feature_list}, EXPECTED: {label_list}, RMSE VALUE: {ret_rmse}')
+                except IndexError:
                     print("Zero Division Error Due to Empty Set.")
+            # report the final RMSE
+            for rmse in range(0, len(rmse_list), 100):
+                print(f'EPOCH {rmse} = {rmse_list[rmse]}')
             self.verbosity_print(verbosity)
 
     def test(self, data_set: NNData, order=NNData.Order.SEQUENTIAL):
@@ -135,34 +139,43 @@ class FFBPNetwork(LayerList):
         - It will report the input, expected and output value for each example
         - It will report RMSE at the end of the test
         """
-        if data_set.number_of_samples(data_set.Set.TEST) is None:
+
+        if not data_set.number_of_samples(data_set.Set.TEST):
             raise FFBPNetwork.EmptySetException
+
+        rmse_list = []
         data_set.prime_data(data_set.Set.TEST, order)
-        while not data_set.number_of_samples(data_set.Set.TEST):
-            feature_labels_pair = data_set.get_one_item()
-            print(feature_labels_pair[0])
-            expected_list = []
+        while not data_set.pool_is_empty(data_set.Set.TEST):
+            feature_labels_pair = data_set.get_one_item(data_set.Set.TEST)
+            label_list = feature_labels_pair[1]
+            feature_list = feature_labels_pair[0]
+            expected_list = label_list
             actual_list = []
-            for feature in feature_labels_pair[0]:
-                self.inputs_x_feature = feature
-                FFBPNeurode.set_input(self.inputs_x_feature)
-                expected_list.append(self.inputs_x_feature)
-            for label in feature_labels_pair[1]:
-                self.outputs_y_labels = label.value
-                FFBPNeurode.set_expected(self.outputs_y_labels)
-                actual_list.append(self.outputs_y_labels)
+            for feature, input_node in zip(feature_list, self.input_nodes):
+                input_node.set_input(feature)
+            for node in self.output_nodes:
+                actual_list.append(node.node_value)
+            for label, actual in zip(label_list, self.output_nodes):
+                actual.set_expected(label)
             try:
                 ret_rmse = FFBPNetwork.rmse_calculator(expected_list, actual_list)
-                print(f'INPUT: {feature_labels_pair[0]}, EXPECTED: {expected_list}, '
+                self._epoch_counter += 1
+                print(f'INPUT: {feature_list}, EXPECTED: {label_list}, '
                       f'OUTPUT: {actual_list}, RMSE VALUE: {ret_rmse}')
-            except FFBPNetwork.EmptySetException:
+                rmse_list.append(ret_rmse)
+            except IndexError:
                 print("Zero Division Error Due to Empty Set.")
+        for rmse in range(0, len(rmse_list), 100):
+            print(f'EPOCH {rmse} = {rmse_list[rmse]}')
         self.verbosity_print()
+
+    def plot_graph(self):
+        style.use('ggplot')
 
 
 def run_iris():
     network = FFBPNetwork(4, 3)
-    network.add_hidden_layer(3)
+    network.add_hidden_layer(4)
     Iris_X = [[5.1, 3.5, 1.4, 0.2], [4.9, 3, 1.4, 0.2], [4.7, 3.2, 1.3, 0.2], [4.6, 3.1, 1.5, 0.2],
               [5, 3.6, 1.4, 0.2], [5.4, 3.9, 1.7, 0.4], [4.6, 3.4, 1.4, 0.3], [5, 3.4, 1.5, 0.2],
               [4.4, 2.9, 1.4, 0.2], [4.9, 3.1, 1.5, 0.1], [5.4, 3.7, 1.5, 0.2], [4.8, 3.4, 1.6, 0.2],
@@ -222,8 +235,13 @@ def run_iris():
               [0, 0, 1, ], [0, 0, 1, ], [0, 0, 1, ], [0, 0, 1, ], [0, 0, 1, ], [0, 0, 1, ], [0, 0, 1, ],
               [0, 0, 1, ], [0, 0, 1, ], [0, 0, 1, ]]
     data = NNData(Iris_X, Iris_Y, .7)
+    print("----------------------------------------")
+    print("Train")
+    # network.alter_learning_rate(.8)
     network.train(data, 10001, order=NNData.Order.RANDOM)
-    network.test(data)
+    print("----------------------------------------")
+    print("Test")
+    network.test(data, order=NNData.Order.SEQUENTIAL)
 
 
 def run_sin():
@@ -279,19 +297,27 @@ def run_sin():
              [0.998152472497548], [0.998710143975583], [0.999167945271476], [0.999525830605479],
              [0.999783764189357], [0.999941720229966], [0.999999682931835]]
     data = NNData(sin_X, sin_Y, .1)
-    network.train(data, 10001, order=NNData.Order.RANDOM)
+    print("----------------------------------------")
+    print("Train")
+    network.train(data, 1000, order=NNData.Order.RANDOM)
+    print("----------------------------------------")
+    print("Test")
     network.test(data)
 
 
 def run_XOR():
     data = load_XOR()
     network = FFBPNetwork(1, 1)
-    network.add_hidden_layer(3)
-    network.train(data, 3000, order=NNData.Order.RANDOM)
-    network.test(data)
+    network.add_hidden_layer(1)
+    print("----------------------------------------")
+    print("Train")
+    network.train(data, 1000, order=NNData.Order.RANDOM)
+    print("----------------------------------------")
+    print("Test")
+    network.test(data, order=NNData.Order.SEQUENTIAL)
 
 
 if __name__ == '__main__':
     run_iris()
-    run_sin()
-    run_XOR()
+    # run_sin()
+    # run_XOR()

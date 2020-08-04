@@ -2,6 +2,10 @@ from assignmentOne_Two import NNData, load_XOR
 from assignment_four import LayerList
 from assignment_three import FFBPNeurode
 from math import sqrt
+from matplotlib import pyplot as plt
+from matplotlib import style
+import numpy as np
+import time
 
 
 class FFBPNetwork(LayerList):
@@ -108,24 +112,21 @@ class FFBPNetwork(LayerList):
             data_set.prime_data(data_set.Set.TRAIN, order)
             while not data_set.pool_is_empty(data_set.Set.TRAIN):
                 feature_labels_pair = data_set.get_one_item(data_set.Set.TRAIN)
-                feature_list = feature_labels_pair[0]
                 label_list = feature_labels_pair[1]
-                input_neurodes = self.input_nodes
-                output_neurodes = self.output_nodes
-                expected_list = []
+                feature_list = feature_labels_pair[0]
+                expected_list = label_list
                 actual_list = []
-                for feature, input_node in zip(feature_list, input_neurodes):
+                for feature, input_node in zip(feature_list, self.input_nodes):
                     input_node.set_input(feature)
-                for output_node, label in zip(output_neurodes, label_list):
-                    output_node.set_expected(label)
-                for expected, actual in zip(feature_list, output_neurodes):
-                    expected_list.append(expected)
-                    actual_list.append(actual.node_value)
+                for node in self.output_nodes:
+                    actual_list.append(node.node_value)
+                for label, actual in zip(label_list, self.output_nodes):
+                    actual.set_expected(label)
                 try:
                     ret_rmse = FFBPNetwork.rmse_calculator(actual_list, expected_list)
                     self._epoch_counter += 1
                     rmse_list.append(ret_rmse)
-                    print(f'EXPECTED: {feature_list}, ACTUAL: {label_list}, RMSE VALUE: {ret_rmse}')
+                    print(f'SAMPLE: {feature_list}, EXPECTED: {label_list}, RMSE VALUE: {ret_rmse}')
                 except IndexError:
                     print("Zero Division Error Due to Empty Set.")
             # report the final RMSE
@@ -148,35 +149,46 @@ class FFBPNetwork(LayerList):
         data_set.prime_data(data_set.Set.TEST, order)
         while not data_set.pool_is_empty(data_set.Set.TEST):
             feature_labels_pair = data_set.get_one_item(data_set.Set.TEST)
-            feature_list = feature_labels_pair[0]
             label_list = feature_labels_pair[1]
-            input_neurodes = self.input_nodes
-            output_neurodes = self.output_nodes
-            expected_list = []
+            feature_list = feature_labels_pair[0]
+            expected_list = label_list
             actual_list = []
-            for feature, input_node in zip(feature_list, input_neurodes):
+            for feature, input_node in zip(feature_list, self.input_nodes):
                 input_node.set_input(feature)
-            for output_node, label in zip(output_neurodes, label_list):
-                output_node.set_expected(label)
-            for expected, actual in zip(feature_list, output_neurodes):
-                expected_list.append(expected)
-                actual_list.append(actual.node_value)
+            for node in self.output_nodes:
+                actual_list.append(node.node_value)
+            for label, actual in zip(label_list, self.output_nodes):
+                actual.set_expected(label)
             try:
-                ret_rmse = FFBPNetwork.rmse_calculator(actual_list, expected_list)
+                ret_rmse = FFBPNetwork.rmse_calculator(expected_list, actual_list)
                 self._epoch_counter += 1
+                print(f'INPUT: {feature_list}, EXPECTED: {label_list}, '
+                      f'OUTPUT: {actual_list}, RMSE VALUE: {ret_rmse}')
                 rmse_list.append(ret_rmse)
-                print(f'EXPECTED: {feature_list}, ACTUAL: {label_list}, RMSE VALUE: {ret_rmse}')
             except IndexError:
                 print("Zero Division Error Due to Empty Set.")
-        # report the final RMSE
         for rmse in range(0, len(rmse_list), 100):
+            print(f'**************** EPOCHS REPORT *****************')
             print(f'EPOCH {rmse} = {rmse_list[rmse]}')
+            self.plot_sin_graph(rmse_list, rmse)
         self.verbosity_print()
+
+    def plot_sin_graph(self, rmse_list: list, rmse: float):
+        plt.style.use('seaborn-whitegrid')
+        plt.title(f'A Sine Curve with RMSE value: {rmse}')
+        plt.xlabel('x-rmse')
+        plt.ylabel('sin(x-rmse)')
+        x = np.linspace(min(rmse_list), max(rmse_list))
+        plt.plot(x, np.sin(x), color="green")
+        plt.xlim(np.pi/2)
+        # plt.ylim()
+        plt.show()
 
 
 def run_iris():
+    print(f'Start Timer: {time.perf_counter()}')
     network = FFBPNetwork(4, 3)
-    network.add_hidden_layer(3)
+    network.add_hidden_layer(4)
     Iris_X = [[5.1, 3.5, 1.4, 0.2], [4.9, 3, 1.4, 0.2], [4.7, 3.2, 1.3, 0.2], [4.6, 3.1, 1.5, 0.2],
               [5, 3.6, 1.4, 0.2], [5.4, 3.9, 1.7, 0.4], [4.6, 3.4, 1.4, 0.3], [5, 3.4, 1.5, 0.2],
               [4.4, 2.9, 1.4, 0.2], [4.9, 3.1, 1.5, 0.1], [5.4, 3.7, 1.5, 0.2], [4.8, 3.4, 1.6, 0.2],
@@ -238,14 +250,16 @@ def run_iris():
     data = NNData(Iris_X, Iris_Y, .7)
     print("----------------------------------------")
     print("Train")
-    network.alter_learning_rate(.8)
-    network.train(data, 1000, order=NNData.Order.RANDOM)
+    # network.alter_learning_rate(.8)
+    network.train(data, 10001, order=NNData.Order.RANDOM)
     print("----------------------------------------")
     print("Test")
     network.test(data, order=NNData.Order.SEQUENTIAL)
+    print(f'End Timer: {time.perf_counter()}')
 
 
 def run_sin():
+    print(f'Start Timer: {time.perf_counter()}')
     network = FFBPNetwork(1, 1)
     network.add_hidden_layer(3)
     sin_X = [[0], [0.01], [0.02], [0.03], [0.04], [0.05], [0.06], [0.07], [0.08], [0.09], [0.1], [0.11], [0.12],
@@ -304,9 +318,11 @@ def run_sin():
     print("----------------------------------------")
     print("Test")
     network.test(data)
+    print(f'End Timer: {time.perf_counter()}')
 
 
 def run_XOR():
+    print(f'Start Timer: {time.perf_counter()}')
     data = load_XOR()
     network = FFBPNetwork(1, 1)
     network.add_hidden_layer(3)
@@ -316,6 +332,7 @@ def run_XOR():
     print("----------------------------------------")
     print("Test")
     network.test(data, order=NNData.Order.SEQUENTIAL)
+    print(f'End Timer: {time.perf_counter()}')
 
 
 if __name__ == '__main__':
