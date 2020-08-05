@@ -4,6 +4,8 @@ from assignment_three import FFBPNeurode
 from math import sqrt
 from matplotlib import pyplot as plt
 from matplotlib import style
+import numpy as np
+import time
 
 
 class FFBPNetwork(LayerList):
@@ -18,6 +20,10 @@ class FFBPNetwork(LayerList):
         self._verbose = 0
         self._epochs = 0
         self._epoch_counter = 0
+        self.dataset_name = ''
+        self.train_scores_mean = []
+        self.validation_scores_mean = []
+        self.train_sizes = []
 
     @staticmethod
     def alter_learning_rate(new_learning_rate_value):
@@ -86,24 +92,14 @@ class FFBPNetwork(LayerList):
         mean_error = sum_error / float(len(actual))
         return sqrt(mean_error)
 
-    def train(self, data_set: NNData, epochs=1000, verbosity=2, order=NNData.Order.RANDOM):
-        """
-        # Pseudo code to help in the coding:
-        If the training set is empty, raise EmptySetException
-            for epoch in range(epochs):
-                prime the data using the specified order
-                while training set is not exhausted:
-                    get a feature and label pair from the dataset
-                    present the feature list to the input neurodes
-                    check the values at the output neurodes and calculate the error
-                    present the expected values to the output neurodes
-                    make any necessary report
-            report the final RMSE
-
-        """
+    def train(self, data_set: NNData, epochs=100, verbosity=2, order=NNData.Order.RANDOM):
+        """Trains the model."""
+        self._verbose = 0
         self._epochs = epochs
         self._epoch_counter = 0
         rmse_list = []
+        epoch_list = []
+        rmse_avg = []
         if not data_set.number_of_samples(data_set.Set.TRAIN):
             raise FFBPNetwork.EmptySetException
         for epoch in range(epochs):
@@ -128,23 +124,30 @@ class FFBPNetwork(LayerList):
                 except IndexError:
                     print("Zero Division Error Due to Empty Set.")
             # report the final RMSE
+            print(f'**************** FINAL REPORT *****************')
             for rmse in range(0, len(rmse_list), 100):
+                epoch_list.append(rmse)
                 print(f'EPOCH {rmse} = {rmse_list[rmse]}')
+            print(f'**************** AVG. RMSE *****************')
+            avg_mean = np.mean(rmse_list)
+            rmse_avg.append(avg_mean)
+            print(f'RMSE: {avg_mean}')
             self.verbosity_print(verbosity)
+        self.train_scores_mean.clear()
+        self.train_sizes.clear()
+        self.train_sizes = list(set(epoch_list))[:20]
+        self.train_scores_mean = rmse_avg[:len(self.train_sizes)]
 
     def test(self, data_set: NNData, order=NNData.Order.SEQUENTIAL):
-        """
-        - It will use the testing set rather than the training set
-        - If will only go through the dataset once
-        - It will report the input, expected and output value for each example
-        - It will report RMSE at the end of the test
-        """
-
+        """Does the testing of the dataset."""
+        self._verbose = 0
+        self._epoch_counter = 0
         if not data_set.number_of_samples(data_set.Set.TEST):
             raise FFBPNetwork.EmptySetException
-
-        rmse_list = []
         data_set.prime_data(data_set.Set.TEST, order)
+        rmse_counter = 0
+        total_rmse = 0
+        rmse_collection = []
         while not data_set.pool_is_empty(data_set.Set.TEST):
             feature_labels_pair = data_set.get_one_item(data_set.Set.TEST)
             label_list = feature_labels_pair[1]
@@ -159,23 +162,54 @@ class FFBPNetwork(LayerList):
                 actual.set_expected(label)
             try:
                 ret_rmse = FFBPNetwork.rmse_calculator(expected_list, actual_list)
-                self._epoch_counter += 1
+                rmse_collection.append(ret_rmse)
+                self._verbose += 1
                 print(f'INPUT: {feature_list}, EXPECTED: {label_list}, '
                       f'OUTPUT: {actual_list}, RMSE VALUE: {ret_rmse}')
-                rmse_list.append(ret_rmse)
+                total_rmse += ret_rmse
+                rmse_counter += 1
             except IndexError:
                 print("Zero Division Error Due to Empty Set.")
-        for rmse in range(0, len(rmse_list), 100):
-            print(f'EPOCH {rmse} = {rmse_list[rmse]}')
+        print(f'**************** FINAL RMSE REPORT *****************')
+        RMSE = total_rmse/float(rmse_counter)
+        print(f'RMSE: {RMSE}')
         self.verbosity_print()
+        self.validation_scores_mean.clear()
+        self.validation_scores_mean = rmse_collection[:len(self.train_sizes)]
 
-    def plot_graph(self):
-        style.use('ggplot')
+    def plot_learning_curve(self):
+        print(len(self.train_sizes))
+        print(len(self.train_scores_mean))
+        plt.plot(np.array(self.train_sizes), np.array(self.train_scores_mean), label='Training error')
+        plt.plot(np.array(self.train_sizes), np.array(self.validation_scores_mean), label='Validation error')
+        plt.scatter(np.array(self.train_sizes), np.array(self.validation_scores_mean))
+        plt.scatter(np.array(self.train_sizes), np.array(self.train_scores_mean))
+        plt.ylabel('RMSE', fontsize=14)
+        plt.xlabel('Training EPOCH size', fontsize=14)
+        title = 'Learning curves for a ' + self.dataset_name + ' model'
+        plt.title(title, fontsize=18, y=1.03)
+        plt.legend()
+        plt.ylim(0, 1.5)
+        plt.show()
+
+    def plot_rmse_sin_graph(self):
+        plt.style.use('seaborn-whitegrid')
+        plt.title(f'An RMSE Sine Curve')
+        x = np.linspace(0, np.pi/2, len(self.train_scores_mean))
+        y = np.sin(x)
+        plt.plot(x, y, color="green", marker='o')
+        # plt.scatter(x, self.train_scores_mean, color='red')
+        plt.xlabel("EPOCHS")
+        plt.ylabel("RMSE")
+        plt.show()
+
 
 
 def run_iris():
+    print(f'Start Timer: {time.perf_counter()}')
     network = FFBPNetwork(4, 3)
     network.add_hidden_layer(4)
+    network.dataset_name = "IRIS DATASET"
     Iris_X = [[5.1, 3.5, 1.4, 0.2], [4.9, 3, 1.4, 0.2], [4.7, 3.2, 1.3, 0.2], [4.6, 3.1, 1.5, 0.2],
               [5, 3.6, 1.4, 0.2], [5.4, 3.9, 1.7, 0.4], [4.6, 3.4, 1.4, 0.3], [5, 3.4, 1.5, 0.2],
               [4.4, 2.9, 1.4, 0.2], [4.9, 3.1, 1.5, 0.1], [5.4, 3.7, 1.5, 0.2], [4.8, 3.4, 1.6, 0.2],
@@ -238,15 +272,20 @@ def run_iris():
     print("----------------------------------------")
     print("Train")
     # network.alter_learning_rate(.8)
-    network.train(data, 10001, order=NNData.Order.RANDOM)
+    network.train(data, 100, order=NNData.Order.RANDOM)
     print("----------------------------------------")
     print("Test")
     network.test(data, order=NNData.Order.SEQUENTIAL)
+    network.plot_learning_curve()
+    print(f'End Timer: {time.perf_counter()}')
 
 
 def run_sin():
+    print(f'Start Timer: {time.perf_counter()}')
     network = FFBPNetwork(1, 1)
     network.add_hidden_layer(3)
+    # network.alter_learning_rate(.8)
+    network.dataset_name = "SIN DATASET"
     sin_X = [[0], [0.01], [0.02], [0.03], [0.04], [0.05], [0.06], [0.07], [0.08], [0.09], [0.1], [0.11], [0.12],
              [0.13], [0.14], [0.15], [0.16], [0.17], [0.18], [0.19], [0.2], [0.21], [0.22], [0.23], [0.24], [0.25],
              [0.26], [0.27], [0.28], [0.29], [0.3], [0.31], [0.32], [0.33], [0.34], [0.35], [0.36], [0.37], [0.38],
@@ -303,21 +342,29 @@ def run_sin():
     print("----------------------------------------")
     print("Test")
     network.test(data)
+    network.plot_learning_curve()
+    print(f'End Timer: {time.perf_counter()}')
 
 
 def run_XOR():
+    print(f'Start Timer: {time.perf_counter()}')
     data = load_XOR()
     network = FFBPNetwork(1, 1)
-    network.add_hidden_layer(1)
+    network.add_hidden_layer(3)
+    # network.alter_learning_rate(.8)
+    network.dataset_name = "XOR DATASET"
     print("----------------------------------------")
     print("Train")
     network.train(data, 1000, order=NNData.Order.RANDOM)
     print("----------------------------------------")
     print("Test")
     network.test(data, order=NNData.Order.SEQUENTIAL)
+    # network.plot_learning_curve()
+    network.plot_rmse_sin_graph()
+    print(f'End Timer: {time.perf_counter()}')
 
 
 if __name__ == '__main__':
-    run_iris()
+    # run_iris()
     # run_sin()
-    # run_XOR()
+    run_XOR()
