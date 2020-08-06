@@ -25,9 +25,7 @@ share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-*.zip
-zippackage/
-/zippackage
+*.zip/
 MANIFEST
 
 # PyInstaller
@@ -130,3 +128,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# zipfiles
+zippackage/
