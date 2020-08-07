@@ -3,7 +3,6 @@ from assignment_four import LayerList
 from assignment_three import FFBPNeurode
 from math import sqrt
 from matplotlib import pyplot as plt
-from matplotlib import style
 import numpy as np
 import time
 
@@ -204,7 +203,6 @@ class FFBPNetwork(LayerList):
         plt.show()
 
 
-
 def run_iris():
     print(f'Start Timer: {time.perf_counter()}')
     network = FFBPNetwork(4, 3)
@@ -278,6 +276,7 @@ def run_iris():
     network.test(data, order=NNData.Order.SEQUENTIAL)
     network.plot_learning_curve()
     print(f'End Timer: {time.perf_counter()}')
+    return data
 
 
 def run_sin():
@@ -344,6 +343,7 @@ def run_sin():
     network.test(data)
     network.plot_learning_curve()
     print(f'End Timer: {time.perf_counter()}')
+    return data
 
 
 def run_XOR():
@@ -365,6 +365,6 @@ def run_XOR():
 
 
 if __name__ == '__main__':
-    # run_iris()
+    run_iris()
     # run_sin()
-    run_XOR()
+    # run_XOR()

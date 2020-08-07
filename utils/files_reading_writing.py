@@ -135,10 +135,10 @@ with open("data.txt", "w") as f:
     # We add the json hook to enable it works.
     json.dump(fido, f, cls=MultiTypeEncoder)
 
-with open("data.txt", "r") as f:
-    my_obj = json.load(f, object_hook=multi_type_decoder)
-    print(type(my_obj))
-    print(my_obj)
+# with open("data.txt", "r") as f:
+#     my_obj = json.load(f, object_hook=multi_type_decoder)
+#     print(type(my_obj))
+#     print(my_obj)
 
 
 # if __name__ == '__main__':
