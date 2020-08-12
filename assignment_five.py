@@ -7,7 +7,7 @@ import numpy as np
 import time
 
 
-class FFBPNetwork(LayerList):
+class FFBPNetwork:
     """A base class that offers training and testing,
     One that the client will directly interact with most of the time."""
 
@@ -15,7 +15,9 @@ class FFBPNetwork(LayerList):
         pass
 
     def __init__(self, num_inputs: int, num_outputs: int):
-        super().__init__(num_inputs, num_outputs)
+        self.layers = LayerList(num_inputs, num_outputs)
+        self._num_inputs = num_inputs
+        self._num_outputs = num_outputs
         self._verbose = 0
         self._epochs = 0
         self._epoch_counter = 0
@@ -43,11 +45,11 @@ class FFBPNetwork(LayerList):
 
     def remove_hidden_layer(self, position=0):
         if position < 1:
-            self.remove_layer()
+            self.layers.remove_layer()
         else:
             for _ in range(position):
-                self.move_forward()
-            self.remove_layer()
+                self.layers.move_forward()
+            self.layers.remove_layer()
 
     def browse_network(self):
         """Enables one to move across the network layers,
@@ -58,26 +60,24 @@ class FFBPNetwork(LayerList):
               "1. back/b OR 2. forward/f OR 3. current data/CD")
         browse_option = input("Enter your navigation Option:__")
         if browse_option == "back" or browse_option == "b":
-            self.move_back()
+            self.layers.move_back()
             print("Success! Moved a step back in the Network")
         elif browse_option == "forwards" or browse_option == "f":
-            self.move_forward()
+            self.layers.move_forward()
             print("Success! Moved a step forward in the Network")
         elif browse_option == "current data" or browse_option == "CD":
-            current_data = self.get_current_data()
+            current_data = self.layers.get_current_data()
             print(f'Current Data is: {current_data}')
         else:
             print("Wrong Entry: Kindly follow instructions!")
 
-    def add_hidden_layer(self, num_nodes: int, position=0):
+    def add_hidden_layer(self, num_nodes=5, position=0):
         """Add layer immediately after the input layer if the position is zero, else
         after the position specified, input layer inclusive."""
-        if position < 1:
-            self.add_layer(num_nodes)
-        else:
-            for _ in range(position):
-                self.move_forward()
-            self.add_layer(num_nodes)
+        self.layers.reset_to_head()
+        for _ in range(position):
+            self.layers.move_forward()
+        self.layers.add_layer(num_nodes)
 
     @staticmethod
     def rmse_calculator(actual, predicted):
@@ -109,11 +109,11 @@ class FFBPNetwork(LayerList):
                 feature_list = feature_labels_pair[0]
                 expected_list = label_list
                 actual_list = []
-                for feature, input_node in zip(feature_list, self.input_nodes):
+                for feature, input_node in zip(feature_list, self.layers.input_nodes):
                     input_node.set_input(feature)
-                for node in self.output_nodes:
+                for node in self.layers.output_nodes:
                     actual_list.append(node.node_value)
-                for label, actual in zip(label_list, self.output_nodes):
+                for label, actual in zip(label_list, self.layers.output_nodes):
                     actual.set_expected(label)
                 try:
                     ret_rmse = FFBPNetwork.rmse_calculator(actual_list, expected_list)
@@ -153,11 +153,11 @@ class FFBPNetwork(LayerList):
             feature_list = feature_labels_pair[0]
             expected_list = label_list
             actual_list = []
-            for feature, input_node in zip(feature_list, self.input_nodes):
+            for feature, input_node in zip(feature_list, self.layers.input_nodes):
                 input_node.set_input(feature)
-            for node in self.output_nodes:
+            for node in self.layers.output_nodes:
                 actual_list.append(node.node_value)
-            for label, actual in zip(label_list, self.output_nodes):
+            for label, actual in zip(label_list, self.layers.output_nodes):
                 actual.set_expected(label)
             try:
                 ret_rmse = FFBPNetwork.rmse_calculator(expected_list, actual_list)
