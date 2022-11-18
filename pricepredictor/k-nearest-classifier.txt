@@ -1,0 +1,32 @@
+# K NEAREST CLASSIFIER ALGORITHM
+
+
+1. What is knn?
+- KNN - K Nearest Neighbor, is on of the simplest Supervised Machine Learnig algorithm  mostly used for classification.
+- It classifies a datapoint based on how its neigbors are classified
+- KNN stores all available cases and classifies new cases based on a similarity measure
+- A datapoint is classified by the majority votes from its 5 nearest neighbors
+
+2. Why do we need knn ?
+- KNN is based on feature similarity. We can use KNN to do classification
+- 
+
+3. How do we choose the factor 'K'?
+- KNN Algorithm is based on "feature similarity": choosing the right value of k is a process called "paprameter tuning"
+and is important for better accuracy.
+- To choose a value of K:
+    * Sqrt(n), where n is the total number of data points
+    * Odd value of K is selected to avoid confusion between two classes of data
+
+
+4. When do we use KNN?
+- When data is labelled
+- Data is noise free
+- Data is small, because KNN is a "lazy learner", and does not learn a discriminative function from the training set
+
+
+5. How does the algorithm work?
+- A poditive integer k is specified, along with a new sample
+- We select the k entries in database which are closest to the new sample
+- We find the most common classification of these entries
+- This is the classification we give to the new sample

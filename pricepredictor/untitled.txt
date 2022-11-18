@@ -1,0 +1,27 @@
+OVERFITTING & UNDERFITTING
+
+#1: What is Overfitting ?
+- A scenarion where the machine learning model tries to learn from the details along with the noise in the data and tries to fit each data point on the curve.
+- As the model has very less flexibility, it fails to predict new data points, and thus the model rejects every new data point during prediciton
+- Reason for overfitting: 
+    * Data used for training is not cleaned and contains noise(garbage values) in it.
+    * The model has high variance
+    * Size of training data is not enough
+    * Model is too complex
+    
+
+#2: What is Underfitting ?
+- A scenario where machine learning model can neither learn the relationship between variables in the data nor predict or claassify a new data point.
+    - As the model does not fully learn the patterns, it accepts every new data point during the prediction
+
+- Reason for underfitting: 
+    * Data used for training is not cleaned and contains noise(garbage values) in it.
+    * The model has high bias
+    * Size of training data is not enough
+    * Model is too simple
+
+What is a Good Fit
+- A line or a curve that best fits the data is neither overfitting nor underfitting models but is just right.
+
+
+What is the importance of doing data correlation ?
